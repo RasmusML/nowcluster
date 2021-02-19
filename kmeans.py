@@ -2,11 +2,14 @@ import sys
 from ctypes import *
 import numpy as np
 
+# @TODO: consider implementing the c-extesion instead of ctypes, it may yield better performance.
+
 def load_library():
     global kmeans_lib
     os = sys.platform
 
-    if os == "linux":
+    # https://docs.python.org/3/library/sys.html#sys.platform
+    if os.startswith("linux"):
         kmeans_lib = cdll.LoadLibrary("./bin/kmeans.so")
     else:
         print(f"{os} unsupported platform")
