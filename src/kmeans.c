@@ -1,8 +1,12 @@
 #include <stdio.h>
-#include "kmeans.h"
+#include <stdlib.h>
 
-int hello() {
-  printf("hello\n");
-  return 0;
+// #include "kmeans.h"
+#include "types.h"
+#include "logger.h"
+
+void kmeans(int32 dataset, uint32 num_clusters) {
+  kmeans_log();
+  printf("clusters %d\n", num_clusters);
 }
 

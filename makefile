@@ -1,4 +1,4 @@
-CC		  := gcc
+CC      := gcc
 CFLAGS  := -c -Isrc -Wall -Werror -fpic
 LDFLAGS := -shared
 
