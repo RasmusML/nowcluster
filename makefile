@@ -2,7 +2,7 @@ CC      := gcc
 CFLAGS  := -c -Isrc -Wall -Werror -fpic
 LDFLAGS := -shared
 
-TARGET  := bin/kmeans.so
+TARGET  := build/kmeans.so
 
 SOURCES := $(wildcard src/*.c)
 OBJECTS := $(SOURCES:src/%.c=%.o)
