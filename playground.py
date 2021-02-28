@@ -1,4 +1,4 @@
-from clusters import k_means
+from pynowcluster.kmeans import k_means
 import numpy as np
 import matplotlib.pyplot as plt
 

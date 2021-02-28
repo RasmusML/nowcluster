@@ -143,3 +143,6 @@ void k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clust
   free(cluster_groups);
 }
 
+void fractal_kmeans():
+  
+

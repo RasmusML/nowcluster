@@ -1,6 +1,6 @@
 if not exist "build" mkdir "build"
 pushd build
-cl ..\src\*.c /LD /link -EXPORT:k_means
+cl ..\*.cpp /LD /link -EXPORT:k_means /OUT:nowcluster.dll
 del *.exp
 del *.lib
 del *.obj
