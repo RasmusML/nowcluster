@@ -1,9 +1,7 @@
 from ctypes import cdll
 import sys
-import os
-import pynowcluster
-import platform
-  
+import os  
+
 class ccore_library:
     
     lib = None
@@ -20,10 +18,12 @@ class ccore_library:
                 else:
                     raise OSError(f"{os} unsupported platform.")
                     
-            def get_library_path(): #fix
-                dir = pynowcluster.__path__[0]
-                return dir[:-len(pynowcluster.__name__)] + "ccore/build/nowcluster" + get_os_extension()
-                    
+            def get_library_path():
+                package = __package__.split(".")[-1]
+                lib_absolute_path = __file__.split(package, 1)[0]
+                ccore_relative_path = "ccore" + os.path.sep + "build" + os.path.sep + "nowcluster" + get_os_extension()
+                return lib_absolute_path + ccore_relative_path
+                
             full_path = get_library_path()
             ccore_library.lib = cdll.LoadLibrary(full_path)
         
