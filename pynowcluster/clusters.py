@@ -113,7 +113,7 @@ class FractalKMeans():
 
     return self
 
-  def get_layer_count(self):
+  def get_num_layers(self):
     return self._clusters.shape[0]
 
   def get_layer(self, n):
