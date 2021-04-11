@@ -209,49 +209,48 @@ void k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clust
 
 
 struct ClusterJob {
+  uint32 layer;
+
   float *samples;
   uint32 n_samples;
-  
-  uint32 layer;
-  //uint32 id;
   
   uint32 *mask_indices;
 };
 
-uint32 count(uint32 target, uint32 *arr, uint32 arr_len) {
+uint32 count(uint32 target, uint32 *arr, uint32 length) {
   uint32 count = 0;
   
-  for (uint32 i = 0; i < arr_len; i++) {
+  for (uint32 i = 0; i < length; i++) {
     if (arr[i] == target) count += 1;
   }
   
   return count;
 }
 
-void update_mask(uint32 *mask, uint32 *groups, uint32 id, uint32 *mask_indices, uint32 n_samples) {
-  for (uint32 i = 0; i < n_samples; i++) {
-    mask[mask_indices[i]] = id + groups[i];
-  }
-}
-
-void update_mask2(uint32 *mask, uint32 id, uint32 *mask_indices, uint32 n_samples) {
+void update_mask(uint32 id, uint32 *mask, uint32 *mask_indices, uint32 n_samples) {
   for (uint32 i = 0; i < n_samples; i++) {
     mask[mask_indices[i]] = id;
   }
 }
 
-ClusterJob create_child_clusterjob(uint32 group, uint32 id, uint32 *child_groups, ClusterJob *parent, uint32 n_features) {
-  uint32 group_size = count(group, child_groups, parent->n_samples);
+void update_mask_by_offset(uint32 *offsets, uint32 id, uint32 *mask, uint32 *mask_indices, uint32 n_samples) {
+  for (uint32 i = 0; i < n_samples; i++) {
+    mask[mask_indices[i]] = id + offsets[i];
+  }
+}
+
+ClusterJob create_child_clusterjob(uint32 cluster, uint32 *clusters, ClusterJob *parent, uint32 n_features) {
+  uint32 cluster_size = count(cluster, clusters, parent->n_samples);
   
   ClusterJob child;
-  child.n_samples = group_size;
+  child.n_samples = cluster_size;
   child.layer = parent->layer + 1;
-  child.mask_indices = (uint32 *)malloc(group_size * sizeof(uint32));
-  child.samples = (float *)malloc(group_size * n_features * sizeof(float));
+  child.mask_indices = (uint32 *)malloc(cluster_size * sizeof(uint32));
+  child.samples = (float *)malloc(cluster_size * n_features * sizeof(float));
   
   uint32 i = 0;
   for (uint32 j = 0; j < parent->n_samples; j++) {
-    if (child_groups[j] == group) {
+    if (clusters[j] == cluster) {
       child.mask_indices[i] = parent->mask_indices[j];
       
       for (uint32 k = 0; k < n_features; k++) {
@@ -265,7 +264,7 @@ ClusterJob create_child_clusterjob(uint32 group, uint32 id, uint32 *child_groups
   return child;
 }
 
-ClusterJob copy_clusterjob(ClusterJob *parent, uint32 id, uint32 n_features) {  
+ClusterJob copy_clusterjob(ClusterJob *parent, uint32 n_features) {  
   ClusterJob copy;
   copy.n_samples = parent->n_samples;
   copy.layer = parent->layer + 1;
@@ -276,7 +275,8 @@ ClusterJob copy_clusterjob(ClusterJob *parent, uint32 id, uint32 n_features) {
     copy.mask_indices[j] = parent->mask_indices[j];
     
     for (uint32 k = 0; k < n_features; k++) {
-      copy.samples[j*n_features + k] = parent->samples[j*n_features + k];
+      uint32 i = j*n_features + k;
+      copy.samples[i] = parent->samples[i];
     }
   }
   
@@ -286,14 +286,18 @@ ClusterJob copy_clusterjob(ClusterJob *parent, uint32 id, uint32 n_features) {
 
 std::list<uint32 *> fractal_result;
 
-void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 *result) {
-  uint32 *mask = (uint32 *)malloc(n_samples * sizeof(uint32));
+void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, float tolerance, uint32 max_iterations, uint32 *layers_result) {
+  uint32 *mask = (uint32 *) malloc(n_samples * sizeof(uint32));
+  
+  uint32 *clusters = (uint32 *) malloc(n_samples * sizeof(uint32));
+  //uint32 *mask_indices = (uint32 *) malloc(n_sample * sizeof(uint32));
+  //float *samples = (float *) malloc(n_sample * n_features * sizeof(float));
   
   ClusterJob root;
   root.samples = dataset;
   root.n_samples = n_samples;
   root.layer = 0;
-  root.mask_indices = (uint32 *)malloc(n_samples * sizeof(uint32));
+  root.mask_indices = (uint32 *) malloc(n_samples * sizeof(uint32));
   
   for (uint32 i = 0; i < n_samples; i++) {
     root.mask_indices[i] = i;
@@ -319,38 +323,35 @@ void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32
       cluster_index = 0;
       layer += 1;
 
-      uint32 *maskResult = (uint32 *)malloc(n_samples * sizeof(uint32));
+      uint32 *mask_result = (uint32 *) malloc(n_samples * sizeof(uint32));
       for (uint32 i = 0; i < n_samples; i++) {
-        maskResult[i] = mask[i];
+        mask_result[i] = mask[i];
       }
 
-      fractal_result.push_back(maskResult);
+      fractal_result.push_back(mask_result);
     }
     
     if (current.n_samples >= 2) {
       splitting = 1;
 
-      uint32 *groups = (uint32 *)malloc(current.n_samples*sizeof(uint32));
+      uint32 n_splits = 2;  // @TODO: make this a variable number of splits.
 
-      float *init = init_centroids_to_first(current.samples, current.n_samples, n_features, 2);
-      k_means(current.samples, current.n_samples, n_features, 2, 0.001f, 100, init, NULL, groups);
+      float *init = init_centroids_to_first(current.samples, current.n_samples, n_features, n_splits);
+      k_means(current.samples, current.n_samples, n_features, n_splits, tolerance, max_iterations, init, NULL, clusters);
 
-      update_mask(mask, groups, cluster_index, current.mask_indices, current.n_samples);
-      
-      ClusterJob child1 = create_child_clusterjob(0, cluster_index, groups, &current, n_features);
-      queue.push(child1);
-      
-      ClusterJob child2 = create_child_clusterjob(1, cluster_index, groups, &current, n_features);
-      queue.push(child2);
+      update_mask_by_offset(clusters, cluster_index, mask, current.mask_indices, current.n_samples);
 
-      cluster_index += 2;
-      
-      free(groups);
-      
+      for (uint32 offset = 0; offset < n_splits; offset++) {
+        ClusterJob child = create_child_clusterjob(offset, clusters, &current, n_features);
+        queue.push(child);
+      }
+
+      cluster_index += n_splits;
+
     } else {
-      update_mask2(mask, cluster_index, current.mask_indices, current.n_samples);
+      update_mask(cluster_index, mask, current.mask_indices, current.n_samples);
       
-      ClusterJob copy = copy_clusterjob(&current, cluster_index, n_features);
+      ClusterJob copy = copy_clusterjob(&current, n_features);
       queue.push(copy);
 
       cluster_index += 1;
@@ -359,25 +360,26 @@ void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32
     free(current.mask_indices);
     if (current.layer != 0) free(current.samples);
   }
+
   
   free(mask);
 
-  *result = layer;
+  *layers_result = layer;
 }
 
-void copy_fractal_k_means_result(uint32 n_samples, uint32 *result) {
+void copy_fractal_k_means_result(uint32 n_samples, uint32 *dst) {
 
-  uint32 layer = 0;
+  uint32 layerCount = 0;
   while (fractal_result.size() > 0) {
     uint32 *mask = fractal_result.front();
     fractal_result.pop_front();
 
-    uint32 *l = result + layer * n_samples;
+    uint32 *layer = dst + layerCount * n_samples;
     for (uint32 s = 0; s < n_samples; s++) {
-      l[s] = mask[s];
+      layer[s] = mask[s];
     }
 
-    layer += 1;
+    layerCount += 1;
 
     free(mask);
 
