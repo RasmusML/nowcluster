@@ -211,7 +211,7 @@ void k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clust
 struct ClusterJob {
   uint32 layer;
 
-  float *samples;
+  //float *samples;
   uint32 n_samples;
   
   uint32 *mask_indices;
@@ -246,17 +246,11 @@ ClusterJob create_child_clusterjob(uint32 cluster, uint32 *clusters, ClusterJob 
   child.n_samples = cluster_size;
   child.layer = parent->layer + 1;
   child.mask_indices = (uint32 *)malloc(cluster_size * sizeof(uint32));
-  child.samples = (float *)malloc(cluster_size * n_features * sizeof(float));
   
   uint32 i = 0;
   for (uint32 j = 0; j < parent->n_samples; j++) {
     if (clusters[j] == cluster) {
-      child.mask_indices[i] = parent->mask_indices[j];
-      
-      for (uint32 k = 0; k < n_features; k++) {
-        child.samples[i*n_features + k] = parent->samples[j*n_features + k];
-      }
-      
+      child.mask_indices[i] = parent->mask_indices[j];      
       i += 1;
     }
   }
@@ -269,15 +263,9 @@ ClusterJob copy_clusterjob(ClusterJob *parent, uint32 n_features) {
   copy.n_samples = parent->n_samples;
   copy.layer = parent->layer + 1;
   copy.mask_indices = (uint32 *)malloc(parent->n_samples * sizeof(uint32));
-  copy.samples = (float *)malloc(parent->n_samples * n_features * sizeof(float));
   
   for (uint32 j = 0; j < parent->n_samples; j++) {
     copy.mask_indices[j] = parent->mask_indices[j];
-    
-    for (uint32 k = 0; k < n_features; k++) {
-      uint32 i = j*n_features + k;
-      copy.samples[i] = parent->samples[i];
-    }
   }
   
   return copy;
@@ -290,11 +278,10 @@ void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, float 
   uint32 *mask = (uint32 *) malloc(n_samples * sizeof(uint32));
   
   uint32 *clusters = (uint32 *) malloc(n_samples * sizeof(uint32));
+  float *samples = (float *) malloc(n_samples * n_features * sizeof(float));
   //uint32 *mask_indices = (uint32 *) malloc(n_sample * sizeof(uint32));
-  //float *samples = (float *) malloc(n_sample * n_features * sizeof(float));
   
   ClusterJob root;
-  root.samples = dataset;
   root.n_samples = n_samples;
   root.layer = 0;
   root.mask_indices = (uint32 *) malloc(n_samples * sizeof(uint32));
@@ -333,11 +320,22 @@ void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, float 
     
     if (current.n_samples >= 2) {
       splitting = 1;
+      
+      for (uint32 i = 0; i < current.n_samples; i++) {
+        uint32 index = current.mask_indices[i];
+
+        float *sample = samples + i * n_features;
+        float *dsample = dataset + index * n_features; 
+
+        for (uint32 f = 0; f < n_features; f++) {
+          sample[f] = dsample[f];
+        }
+      }
 
       uint32 n_splits = 2;  // @TODO: make this a variable number of splits.
 
-      float *init = init_centroids_to_first(current.samples, current.n_samples, n_features, n_splits);
-      k_means(current.samples, current.n_samples, n_features, n_splits, tolerance, max_iterations, init, NULL, clusters);
+      float *init = init_centroids_to_first(samples, current.n_samples, n_features, n_splits);
+      k_means(samples, current.n_samples, n_features, n_splits, tolerance, max_iterations, init, NULL, clusters);
 
       update_mask_by_offset(clusters, cluster_index, mask, current.mask_indices, current.n_samples);
 
@@ -358,10 +356,9 @@ void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, float 
     }
     
     free(current.mask_indices);
-    if (current.layer != 0) free(current.samples);
   }
 
-  
+  free(samples);  
   free(mask);
 
   *layers_result = layer;
