@@ -1,31 +1,25 @@
 from ctypes import cdll
-import sys
-import os  
+from sys import platform as _platform
+import os
+import pynowcluster
+
+
+if (_platform == "win32"):
+    PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + "build" + os.sep + "nowcluster.dll"
+elif (_platform == "linux"):
+    PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + "build" + os.sep + "nowcluster.so"
+else:
+    raise OSError(f"{_platform} unsupported platform." )
 
 class ccore_library:
     
     lib = None
 
     @staticmethod
-    def get():
-        if ccore_library.lib is None:
-        
-            def get_os_extension():
-                if sys.platform.startswith("win32"):
-                    return ".dll"
-                elif sys.platform.startswith("linux"):
-                    return ".so"
-                else:
-                    raise OSError(f"{os} unsupported platform.")
-                    
-            def get_library_path():
-                package = __package__.split(".")[-1]
-                lib_absolute_path = __file__.split(package, 1)[0]
-                ccore_relative_path = "ccore" + os.path.sep + "build" + os.path.sep + "nowcluster" + get_os_extension()
-                return lib_absolute_path + ccore_relative_path
-                
-            full_path = get_library_path()
-            ccore_library.lib = cdll.LoadLibrary(full_path)
+    def get():           
+
+        if ccore_library.lib is None:     
+            ccore_library.lib = cdll.LoadLibrary(PATH_NOWCLUSTER_CCORE)
         
         return ccore_library.lib
 
