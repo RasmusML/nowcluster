@@ -7,7 +7,7 @@
 
 int main() {
     
-    uint32 N = 10;
+    uint32 N = 10_000;
     uint32 M = 4;
     float *dataset = (float *)malloc(N*M*sizeof(float));
     
