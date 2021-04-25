@@ -389,6 +389,137 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
   free(centroid_inits);
 }
 
+void fractal_k_means_parallel_full(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
+                                   float tolerance, uint32 max_iterations, uint32 init_method, 
+                                   std::list<uint32 *> &fractal_result, uint32 *converged_result) {  
+  
+  const uint32 max_centroids = 2;
+
+  const uint32 processor_count = std::thread::hardware_concurrency();
+  printf("logical processors %u\n", processor_count);
+
+  // fractal memory
+  size_t mask_size = n_samples * sizeof(uint32);
+  size_t mask_indices_size = n_samples * sizeof(uint32);
+  size_t clusters_size = n_samples * sizeof(uint32);
+  size_t samples_size = n_samples * n_features * sizeof(float);
+
+  size_t centroid_inits_size = max_centroids * n_features * sizeof(float);
+
+  uint32 *mask = (uint32 *) malloc(mask_size);
+  uint32 *mask_indices = (uint32 *) malloc(mask_indices_size);
+
+  for (uint32 i = 0; i < n_samples; i++) {
+    mask_indices[i] = i;
+  }
+
+  uint32 *clusters = (uint32 *)malloc(clusters_size);
+  float *samples = (float *)malloc(samples_size);
+
+  float *centroid_inits = (float *)malloc(centroid_inits_size);
+
+  ClusterJob root;
+  root.n_samples = n_samples;
+  root.layer = 0;
+  root.mask_indices_start = 0;
+  
+  uint32 layer = 0;
+  uint32 mask_id = 0;
+
+/*
+  uint32 sample_index = 0;
+  uint32 clusterjobs_left_in_current_layer = 1;
+  uint32 clusterjobs_in_next_layer = 0;
+*/  
+
+  uint8 splitting = 0;
+  
+  std::queue<ClusterJob> queue;
+  
+  queue.push(root);
+
+  *converged_result = 1;
+
+  while (queue.size() > 0) {
+    ClusterJob current = queue.front();
+    queue.pop();
+    
+    if (current.layer > layer) {
+      
+      if (splitting == 0) break;
+      splitting = 0;
+
+      mask_id = 0;
+      layer += 1;
+
+      uint32 *mask_result = (uint32 *)malloc(n_samples * sizeof(uint32));
+      memcpy(mask_result, mask, mask_size);
+
+      fractal_result.push_back(mask_result);
+    }
+    
+    
+  }
+
+  free(mask);
+  free(mask_indices);
+  free(samples);
+  free(centroid_inits);
+}
+
+void process_clusterjob(ClusterJob job) {
+  // @TODO: figure out what to do if zero points are assigned to a cluster. probably just return K-1 clusters, and say only K-1 clusters exist.
+  // That should fix the problem were a cluster contains 0 centroids and fractal k-means keeps creating layers
+  if (current.n_samples > min_cluster_size) {
+    splitting = 1;
+
+    for (uint32 i = 0; i < current.n_samples; i++) {
+      uint32 index = mask_indices[current.mask_indices_start + i];
+
+      float *sample = samples + i * n_features;
+      float *dataset_sample = dataset + index * n_features; 
+
+      for (uint32 f = 0; f < n_features; f++) {
+        sample[f] = dataset_sample[f];
+      }
+    }
+
+    uint32 n_splits = 2;  // @TODO: make this a variable number of splits. It has to take min_cluster_size into account though
+
+    uint32 converged;
+    fractal_init_centroids(samples, current.n_samples, n_features, n_splits, init_method, centroid_inits);
+    k_means_algorithm_full(samples, current.n_samples, n_features, n_splits, tolerance, 
+                            max_iterations, centroid_inits, NULL, clusters, &converged);
+    if (converged == 0) *converged_result = 0;
+
+    update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+
+    uint32 mask_indices_at = current.mask_indices_start;
+    for (uint32 offset = 0; offset < n_splits; offset++) {
+      uint32 cluster_size = update_mask_indices(offset, clusters, mask_indices_at, mask_indices, current.mask_indices_start, current.n_samples);
+
+      ClusterJob child;
+      child.n_samples = cluster_size;
+      child.layer = current.layer + 1;
+      child.mask_indices_start = mask_indices_at;
+
+      queue.push(child);
+      
+      mask_indices_at += cluster_size;
+    }
+
+    mask_id += n_splits;
+
+  } else {
+    update_mask(mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+
+    current.layer += 1;
+    queue.push(current);
+
+    mask_id += 1;
+  }
+}
+
 void copy_fractal_k_means_layer_queue_into_array(uint32 n_samples, uint32 *dst, std::list<uint32 *> &fractal_result) {
   size_t mask_size = n_samples * sizeof(uint32);
 

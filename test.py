@@ -35,8 +35,8 @@ def kmeans_test():
   end = time.time()
 
   print("nowcluster took:", end - start)
-  print("nowcluster centroids:\n", nc_result._centroids)
-  print(nc_result._converged)
+  print("nowcluster centroids:\n", nc_result.centroids)
+  print(nc_result.converged)
   #print("nowcluster groups:", groups)
 
 def fractal_k_means_test():
@@ -53,9 +53,27 @@ def fractal_k_means_test():
   end = time.time()
 
   print("nowcluster took:", end - start)
-  print("nowcluster clusters:\n", fkm._clusters)
-  print("nowcluster layers:\n", fkm._clusters.shape)  
-  print("nowcluster converged:\n", fkm._converged)
+  print("nowcluster clusters:\n", fkm.clusters)
+  print("nowcluster layers:\n", fkm.clusters.shape)  
+  print("nowcluster converged:\n", fkm.converged)
   
 #kmeans_test()
-fractal_k_means_test()
+#fractal_k_means_test()
+from pynowcluster.clusters import FractalKMeans
+
+np.random.seed(0)
+n = 1_000_000
+x = np.random.normal(0, 10, n)
+y = np.random.normal(0, 5, n)
+
+X = np.stack((x,y), axis=1)
+X = X.astype(np.float32)
+
+start = time.time()
+fkm = FractalKMeans().process(X)
+end = time.time()
+
+print("nowcluster took:", end - start)
+print("nowcluster clusters:\n", fkm.clusters)
+print("nowcluster layers:\n", fkm.clusters.shape)  
+print("nowcluster converged:\n", fkm.converged)

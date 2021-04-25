@@ -9,6 +9,45 @@ class Definitions:
   INIT_TO_FIRST_SAMPLES = 3
 
 class KMeans():
+  """K-means clustering.
+
+  A wrapper to a C/C++ implementation of Lloyd's algorithm. 
+
+  Attributes
+  ----------
+  centroids : ndarray of shape (n_centroids, n_features) of np.float32
+              Cluster centers.
+
+  clusters  : cluster label for each sample index describing which cluster the sample is in.
+              Label n corresponds to the centroid in position n in centroids.
+
+  converged : whether KMeans converged or not
+
+  Usage
+  -----
+  from pynowcluster.clusters import KMeans
+
+  data_size = 100
+  num_iters = 50
+  num_clusters = 4
+
+  # sample from Gaussians 
+  data1 = np.random.normal((5,5), (4, 4), (data_size,2))
+  data2 = np.random.normal((4,60), (3,3), (data_size, 2))
+
+  # Combine the data to create the final dataset
+  X = np.concatenate((data1,data2), axis = 0)
+  X = X.astype(np.float32)
+
+  np.random.shuffle(X)
+
+  kMeans = KMeans().process(X, num_clusters)
+
+  print(kMeans.centroids)
+  print(kMeans.converged)
+  print(kMeans.clusters)
+
+  """
   
   def __init__(self):
     self._centroid_inits = {
@@ -38,9 +77,18 @@ class KMeans():
 
   def process(self, X, n_clusters, centroid_init = "kmeans++", tolerance = 0.001, max_iterations = 0):
     """
-    @TODO: params description
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features) of np.float32
+        The input samples.
 
-    centroid_init = {"kmeans++", "random", "first", np.darray}
+    n_clusters : number of clusters
+
+    centroid_init : {"kmeans++", "random", "first"} or ndarray of shape (n_clusters, n_features)
+
+    tolerance : if all centroids move less than tolerance during an update, then the centroids have converged
+
+    max_iterations : maximum number of iterations (0 means iterate till convergens)
 
     """
     self.__check_parameters(X, n_clusters, centroid_init, tolerance, max_iterations)
@@ -70,9 +118,9 @@ class KMeans():
       clusters_result,
       ct.byref(converged_result))
   
-    self._centroids = centroids_result
-    self._clusters = clusters_result
-    self._converged = (converged_result.value == 1)
+    self.centroids = centroids_result
+    self.clusters = clusters_result
+    self.converged = (converged_result.value == 1)
 
     return self
 
@@ -99,12 +147,49 @@ class KMeans():
       if centroid_init.shape[0] != n_clusters or centroid_init.shape[1] != X.shape[1]:
         raise TypeError("centroid_init should have shape: {} x {}, but has {} x {}".format(n_clusters, X.shape[1], centroid_init.shape[0], centroid_init.shape[1]))
 
+      if centroid_init.dtype != np.float32:
+        raise TypeError("centroid_init should contain elements of type np.float32.")
+
     else:
       if self._centroid_inits[centroid_init] is None:
         raise TypeError("invalid centroid init")
 
 
 class FractalKMeans():
+  """Fractal K-means clustering.
+
+  A wrapper to a C/C++ implementation of a fractal clustering algorithm using Lloyd's algorithm. 
+
+  Attributes
+  ----------
+  centroids : ndarray of shape (n_centroids, n_features) of np.float32
+              Cluster centers.
+
+  clusters  : ndarray of shape (n_layers, n_features) of np.float32
+              Each row corresponds to a layers of clusters.
+              Cluster label for each sample index describing which cluster the sample is in for each layer.
+
+  converged : converged or not
+
+  Usage
+  -----
+  from pynowcluster.clusters import FractalKMeans
+
+  n = 1_000_000
+  x = np.random.normal(0, 10, n)
+  y = np.random.normal(0, 5, n)
+
+  X = np.stack((x,y), axis=1)
+  X = X.astype(np.float32)
+
+  start = time.time()
+  fkm = FractalKMeans().process(X)
+  end = time.time()
+
+  print(fkm.clusters)
+  print(fkm.converged)
+
+  """
 
   def __init__(self):
     self._centroid_inits = {
@@ -139,6 +224,21 @@ class FractalKMeans():
     self._ccore.copy_fractal_k_means_result.restype = None
 
   def process(self, X, min_cluster_size = 1, centroid_init = "kmeans++", tolerance = 0.001, max_iterations = 0):
+    """
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features) of np.float32
+        The input samples.
+
+    min_cluster_size : clusters with fewer or the same number of samples as min_cluster_size will stop splitting.
+
+    centroid_init : {"kmeans++", "random", "first"}
+
+    tolerance : if all centroids move less than tolerance during an update, then the centroids have converged
+
+    max_iterations : maximum number of iterations (0 means iterate till convergens)
+    """
+
     self.__check_parameters(X, min_cluster_size, centroid_init, tolerance, max_iterations)
 
     init_type = self._centroid_inits[centroid_init]
@@ -158,7 +258,7 @@ class FractalKMeans():
         ct.byref(layers_result),
         ct.byref(converged_result))
 
-    self._converged = (converged_result.value == 1)
+    self.converged = (converged_result.value == 1)
 
     clusters_result = np.empty((layers_result.value, X.shape[0]), dtype=np.uint32) 
 
@@ -168,7 +268,7 @@ class FractalKMeans():
       clusters_result
     )
 
-    self._clusters = clusters_result
+    self.clusters = clusters_result
 
     return self
 
