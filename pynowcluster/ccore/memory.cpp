@@ -4,13 +4,13 @@
 
 #include "memory.h"
 
-void init_memory(size_t total_size, StackMemory *memory) {
+void init_memory(size_t total_size, TemporaryMemory *memory) {
     memory->memory = (uint8 *) malloc(total_size * sizeof(uint8));
     memory->total = total_size;
     memory->used = 0;
 }
 
-uint8 *push_memory(size_t size, StackMemory *memory) {
+uint8 *allocate_memory(size_t size, TemporaryMemory *memory) {
     uint8 *p = memory->memory + memory->used;
 
     size_t new_used = memory->used + size;
@@ -20,14 +20,11 @@ uint8 *push_memory(size_t size, StackMemory *memory) {
     return p;
 }
 
-void pop_memory(size_t size, StackMemory *memory) {
-    size_t new_used = memory->used - size;
-    assert(new_used >= 0);
-
-    memory->used = new_used;
+void reset_memory(TemporaryMemory *memory) {
+    memory->used = 0;
 }
 
-void free_memory(StackMemory *memory) {
+void free_memory(TemporaryMemory *memory) {
     free(memory->memory);
 }
 

@@ -3,10 +3,10 @@
 #include <float.h> // DBL_MAX
 #include <string.h> // memcpy, memset
 #include <assert.h>
-#include <vector>
+//#include <vector>
 #include <queue>
 #include <list>
-
+#include <thread>
 
 #include "initialization_procedures.h"
 #include "timer.h"
@@ -28,6 +28,10 @@ void print_samples(float *samples, uint32 n_samples, uint32 n_features) {
     print_sample(sample_p, n_features);
   }
 }
+
+//
+// K-means
+//
 
 inline double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements) {
   double dst = 0;
@@ -54,57 +58,43 @@ static int8 kmeans_init_centroids(float *dataset, uint32 n_samples, uint32 n_fea
   return 0;
 }
 
-StackMemory *memory;
-
 void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
                             float tolerance, uint32 max_iterations, float *centroid_init, 
-                            float *centroids_result, uint32 *groups_result) {
+                            float *centroids_result, uint32 *groups_result, uint32 *converged_result) {
                
   size_t centroids_size = n_clusters * n_features * sizeof(float);
   size_t cluster_sizes_size = n_clusters * sizeof(uint32);
   size_t clusters_size = n_samples * sizeof(uint32);
   size_t new_centroids_size = centroids_size;
 
-  /*
-  float *centroids = (float *)push_memory(centroids_size, memory);
+  // :difference
+  //size_t lambda_inv_size = n_clusters * sizeof(float);
 
-  uint32 *cluster_sizes = (uint32 *)push_memory(cluster_sizes_size, memory);
-  uint32 *clusters = (uint32 *)push_memory(clusters_size, memory);
-  
-  float *new_centroids = (float *)push_memory(new_centroids_size, memory); 
+  float *centroids;
+  uint32 *cluster_sizes;
+  uint32 *clusters;
+  float *new_centroids;
 
-  float *centroids = (float *)push_memory(centroids_size, memory);
-*/
+  centroids = (float *)malloc(centroids_size);
+  cluster_sizes = (uint32 *)malloc(cluster_sizes_size);
+  clusters = (uint32 *)malloc(clusters_size);
+  new_centroids = (float *)malloc(new_centroids_size); 
 
+  memcpy(centroids, centroid_init, centroids_size);
 
-  float *centroids = (float *)malloc(centroids_size);
+  // :difference
+  //float *lambda_inv = (float *)malloc(lambda_inv_size);
 
-  uint32 *cluster_sizes = (uint32 *)malloc(cluster_sizes_size);
-  uint32 *clusters = (uint32 *)malloc(clusters_size);
-  
-  float *new_centroids = (float *)malloc(new_centroids_size); 
-
-  for (uint32 c = 0; c < n_clusters; c++) {
-    for (uint32 f = 0; f < n_features; f++) {
-      uint32 index = c * n_features + f;
-      centroids[index] = centroid_init[index]; 
-    }
-  }
-
-  //memcpy(centroids, centroid_init, centroids_size);
+  uint32 converged = 1;
 
   uint32 iteration = 1;
   while(1) {
-
     // reset new centroids + cluster sizes
-    for (uint32 c = 0; c < n_clusters; c++) {
-      cluster_sizes[c] = 0;
+    memset(cluster_sizes, 0, cluster_sizes_size);
+    memset(new_centroids, 0, new_centroids_size);
 
-      for (uint32 f = 0; f < n_features; f++) {
-        uint32 index = c * n_features + f;
-        new_centroids[index] = 0;
-      }
-    }
+    // :difference
+    //memset(lambda_inv, 0, lambda_size);
 
     // compute distances and assign samples to clusters
     for (uint32 s = 0; s < n_samples; s++) {
@@ -132,6 +122,10 @@ void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features,
       for (uint32 f = 0; f < n_features; f++) {
         float *new_centroid = new_centroids + closest_centroid_id * n_features;
         new_centroid[f] += sample[f];
+
+        // :difference
+        //new_centroid[f] += sample[f] / min_distance;
+        //lambda_inv[f] += 1 / min_distance;
       }
     }
 
@@ -146,6 +140,9 @@ void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features,
 
       for (uint32 f = 0; f < n_features; f++) {
         new_centroid[f] /= group_count;
+
+        // :difference
+        //new_centroid[f] /= lambda_inv[f];
       }
 
       // calculate distance between new and old centroid
@@ -165,8 +162,7 @@ void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features,
     }
     
     if (max_iterations != 0 && iteration >= max_iterations) {
-      // @TODO: return whether it converged.
-      //printf("centroids did not converge!\n");
+      converged = 0;
       break;
     }
     
@@ -174,28 +170,16 @@ void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features,
   }
 
   if (groups_result != NULL) {  
-    for (uint32 i = 0; i < n_samples; i++) {
-      groups_result[i] = clusters[i];
-    } 
+    memcpy(groups_result, clusters, clusters_size);
   }
 
   if (centroids_result != NULL) {
-    for (uint32 c = 0; c < n_clusters; c++) {
-      float *centroid = &centroids[c * n_features];
-      float *centroid_result = &centroids_result[c * n_features];
-
-      for (uint32 f = 0; f < n_features; f++) {
-        centroid_result[f] = centroid[f];
-      }
-    }
+    memcpy(centroids_result, centroids, centroids_size);
   }
-  
-  /*
-  pop_memory(centroids_size, memory);
-  pop_memory(new_centroids_size, memory);
-  pop_memory(cluster_sizes_size, memory);
-  pop_memory(clusters_size, memory);
-  */
+
+  if (converged_result != NULL) {
+    *converged_result = converged;
+  }  
 
   free(centroids);
   free(cluster_sizes);
@@ -204,21 +188,30 @@ void k_means_algorithm_full(float *dataset, uint32 n_samples, uint32 n_features,
 
 }
 
-void k_means_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float tolerance, uint32 max_iterations, uint32 init_method, float *custom_centroid_init, float *centroids_result, uint32 *groups_result) {
+
+void k_means_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
+                       float tolerance, uint32 max_iterations, uint32 init_method, float *custom_centroid_init, 
+                       float *centroids_result, uint32 *groups_result, uint32 *converged_result) {
+
   float centroids_size = n_clusters * n_features * sizeof(float);
   float *centroid_init = (float *)malloc(centroids_size);
   
-  int8 init_success =  kmeans_init_centroids(dataset, n_samples, n_features, n_clusters, init_method, custom_centroid_init, centroid_init);
+  int8 init_success = kmeans_init_centroids(dataset, n_samples, n_features, n_clusters, init_method, custom_centroid_init, centroid_init);
   assert(init_success == 0);
   
-  k_means_algorithm_full(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, centroids_result, groups_result);
+  k_means_algorithm_full(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, centroids_result, groups_result, converged_result);
   free(centroid_init);
 }
+
+//
+// Fractal K-means
+//
 
 struct ClusterJob {
   uint32 layer;
   uint32 n_samples;
   uint32 mask_indices_start;
+  // uint32 sample_pointer;
 };
 
 void update_mask(uint32 id, uint32 *mask, uint32 *mask_indices, uint32 mask_indices_start, uint32 n_samples) {
@@ -270,37 +263,21 @@ static int8 fractal_init_centroids(float *dataset, uint32 n_samples, uint32 n_fe
 }
 
 void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                          float tolerance, uint32 max_iterations, uint32 init_method, uint32 *layers_result, std::list<uint32 *>& fractal_result) {  
+                          float tolerance, uint32 max_iterations, uint32 init_method, 
+                          std::list<uint32 *> &fractal_result, uint32 *converged_result) {  
+  
+  const uint32 max_centroids = 2;
 
-  printf("init-type: %u\n", init_method);
+  const uint32 processor_count = std::thread::hardware_concurrency();
+  printf("logical processors %u\n", processor_count);
 
+  // fractal memory
   size_t mask_size = n_samples * sizeof(uint32);
   size_t mask_indices_size = n_samples * sizeof(uint32);
   size_t clusters_size = n_samples * sizeof(uint32);
   size_t samples_size = n_samples * n_features * sizeof(float);
 
-  const uint32 max_centroids = 2;
   size_t centroid_inits_size = max_centroids * n_features * sizeof(float);
-
-  size_t fractal_size = mask_size + mask_indices_size + clusters_size + samples_size + centroid_inits_size;
-
-/*
-  size_t centroids_size = max_centroids * n_features * sizeof(float);
-  size_t cluster_sizes_size = max_centroids * sizeof(uint32);
-  size_t clusters_size2 = n_samples * sizeof(uint32);
-  size_t new_centroids_size = centroids_size;
-
-  size_t kmeans_size = centroids_size + cluster_sizes_size + clusters_size2 + new_centroids_size;
-
-  size_t memory_size = fractal_size + kmeans_size;
-
-  StackMemory m;
-  memory = &m;
-  init_memory(memory_size, memory);
-
-  uint32 *mask = (uint32 *) push_memory(mask_size, memory);
-  uint32 *mask_indices = (uint32 *) push_memory(mask_indices_size, memory);
-*/
 
   uint32 *mask = (uint32 *) malloc(mask_size);
   uint32 *mask_indices = (uint32 *) malloc(mask_indices_size);
@@ -308,13 +285,6 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
   for (uint32 i = 0; i < n_samples; i++) {
     mask_indices[i] = i;
   }
-
-/*
-  uint32 *clusters = (uint32 *)push_memory(clusters_size, memory);
-  float *samples = (float *)push_memory(samples_size, memory);
-
-  float *centroid_inits = (float *)push_memory(centroid_inits_size, memory);
-*/  
 
   uint32 *clusters = (uint32 *)malloc(clusters_size);
   float *samples = (float *)malloc(samples_size);
@@ -329,16 +299,23 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
   uint32 layer = 0;
   uint32 mask_id = 0;
 
+/*
+  uint32 sample_index = 0;
+  uint32 clusterjobs_left_in_current_layer = 1;
+  uint32 clusterjobs_in_next_layer = 0;
+*/  
+
   uint8 splitting = 0;
   
   std::queue<ClusterJob> queue;
   
   queue.push(root);
 
+  *converged_result = 1;
+
   while (queue.size() > 0) {
     ClusterJob current = queue.front();
     queue.pop();
-    
     
     if (current.layer > layer) {
       
@@ -349,9 +326,7 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
       layer += 1;
 
       uint32 *mask_result = (uint32 *)malloc(n_samples * sizeof(uint32));
-      for (uint32 i = 0; i < n_samples; i++) {
-        mask_result[i] = mask[i];
-      }
+      memcpy(mask_result, mask, mask_size);
 
       fractal_result.push_back(mask_result);
     }
@@ -365,18 +340,20 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
         uint32 index = mask_indices[current.mask_indices_start + i];
 
         float *sample = samples + i * n_features;
-        float *dsample = dataset + index * n_features; 
+        float *dataset_sample = dataset + index * n_features; 
 
         for (uint32 f = 0; f < n_features; f++) {
-          sample[f] = dsample[f];
+          sample[f] = dataset_sample[f];
         }
       }
 
       uint32 n_splits = 2;  // @TODO: make this a variable number of splits. It has to take min_cluster_size into account though
 
-      //fractal_init_centroids(samples, current.n_samples, n_features, n_splits, init_method, centroid_inits);
-      init_centroids_using_kmeansplusplus(samples, current.n_samples, n_features, n_splits, centroid_inits);
-      k_means_algorithm_full(samples, current.n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters);
+      uint32 converged;
+      fractal_init_centroids(samples, current.n_samples, n_features, n_splits, init_method, centroid_inits);
+      k_means_algorithm_full(samples, current.n_samples, n_features, n_splits, tolerance, 
+                             max_iterations, centroid_inits, NULL, clusters, &converged);
+      if (converged == 0) *converged_result = 0;
 
       update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
 
@@ -406,18 +383,14 @@ void fractal_k_means_full(float *dataset, uint32 n_samples, uint32 n_features, u
     }
   }
 
-  //free_memory(memory);
-
   free(mask);
   free(mask_indices);
   free(samples);
   free(centroid_inits);
-
-  *layers_result = layer;
 }
 
-void copy_fractal_k_means_result_full(uint32 n_samples, uint32 *dst, std::list<uint32 *>& fractal_result) {
-  printf("size: %zu\n", fractal_result.size());
+void copy_fractal_k_means_layer_queue_into_array(uint32 n_samples, uint32 *dst, std::list<uint32 *> &fractal_result) {
+  size_t mask_size = n_samples * sizeof(uint32);
 
   uint32 layer_count = 0;
   while (fractal_result.size() > 0) {
@@ -425,9 +398,7 @@ void copy_fractal_k_means_result_full(uint32 n_samples, uint32 *dst, std::list<u
     fractal_result.pop_front();
 
     uint32 *layer = dst + layer_count * n_samples;
-    for (uint32 s = 0; s < n_samples; s++) {
-      layer[s] = mask[s];
-    }
+    memcpy(layer, mask, mask_size);
 
     layer_count += 1;
 

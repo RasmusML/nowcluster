@@ -3,16 +3,16 @@
 
 #include "types.h"
 
-struct StackMemory {
+struct TemporaryMemory {
   uint8 *memory;
   size_t total;
 
   size_t used;
 };
 
-void init_memory(size_t total_size, StackMemory *memory);
-uint8 *push_memory(size_t size, StackMemory *memory);
-void pop_memory(size_t size, StackMemory *memory);
-void free_memory(StackMemory *memory);
+void init_memory(size_t total_size, TemporaryMemory *memory);
+uint8 *allocate_memory(size_t size, TemporaryMemory *memory);
+void reset_memory(TemporaryMemory *memory);
+void free_memory(TemporaryMemory *memory);
 
 #endif

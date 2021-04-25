@@ -8,7 +8,7 @@ import time
 def kmeans_test():
   np.random.seed(1)
 
-  n = 10
+  n = 1000
   x = np.random.normal(0, 10, n)
   y = np.random.normal(0, 5, n)
 
@@ -18,6 +18,7 @@ def kmeans_test():
   clusters = 10
 
   centroid_init = X[:clusters,]
+  print(centroid_init.shape)
   #centroid_init = np.zeros((clusters, 2), dtype=np.float32)
   print("centroid init:\n", centroid_init)
 
@@ -35,11 +36,12 @@ def kmeans_test():
 
   print("nowcluster took:", end - start)
   print("nowcluster centroids:\n", nc_result._centroids)
+  print(nc_result._converged)
   #print("nowcluster groups:", groups)
 
 def fractal_k_means_test():
   np.random.seed(0)
-  n = 10
+  n = 7_000
   x = np.random.normal(0, 10, n)
   y = np.random.normal(0, 5, n)
   
@@ -52,7 +54,8 @@ def fractal_k_means_test():
 
   print("nowcluster took:", end - start)
   print("nowcluster clusters:\n", fkm._clusters)
-  print("nowcluster layers:\n", fkm._clusters.shape)
-
+  print("nowcluster layers:\n", fkm._clusters.shape)  
+  print("nowcluster converged:\n", fkm._converged)
+  
 #kmeans_test()
 fractal_k_means_test()
