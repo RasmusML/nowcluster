@@ -1,0 +1,227 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> // memcpy, memset
+#include <queue>
+#include <list>
+
+#include "kmeans.h"
+#include "fractal_kmeans.h"
+#include "arena.h"
+#include "linkedlist.h"
+
+#include "initialization_procedures.h"
+
+void print_sample(float *sample, uint32 n_features) {
+  printf("(");
+  for (uint32 i = 0; i < n_features - 1; i++) {
+    printf("%f, ", *(sample + i));
+  }
+  printf("%f", *(sample + n_features - 1));
+  printf(")\n");
+}
+
+void print_samples(float *samples, uint32 n_samples, uint32 n_features) {
+  for (uint32 i = 0; i < n_samples; i++) {
+    float *sample_p = samples + n_features * i;
+    print_sample(sample_p, n_features);
+  }
+}
+
+struct ClusterJob {
+  uint32 layer;
+  uint32 n_samples;
+  uint32 mask_indices_start;
+};
+
+static
+void update_mask(uint32 id, uint32 *mask, uint32 *mask_indices, uint32 mask_indices_start, uint32 n_samples) {
+  for (uint32 i = 0; i < n_samples; i++) {
+    uint32 mask_index = mask_indices_start + i;
+    mask[mask_indices[mask_index]] = id;
+  }
+}
+
+static
+void update_mask_by_offsets(uint32 *offsets, uint32 id, uint32 *mask, uint32 *mask_indices, uint32 mask_indices_start, uint32 n_samples) {
+  for (uint32 i = 0; i < n_samples; i++) {
+    uint32 mask_index = mask_indices_start + i;
+    mask[mask_indices[mask_index]] = id + offsets[i];
+  }
+}
+
+#define SWAP(x, y, T) do { T _SWAP = x; x = y; y = _SWAP; } while (0)
+
+static
+uint32 update_mask_indices(uint32 cluster, uint32 *clusters, uint32 mask_indices_at, uint32* mask_indices, uint32 mask_indices_start, uint32 n_samples) {
+  uint32 offset = mask_indices_at - mask_indices_start;
+  uint32 i = offset;
+
+  for (uint32 j = offset; j < n_samples; j++) {
+
+    if (clusters[j] == cluster) {
+      SWAP(clusters[i], clusters[j], uint32);
+      SWAP(mask_indices[mask_indices_start + i], mask_indices[mask_indices_start + j], uint32);
+      
+      i += 1;
+    }
+  }
+
+  return i - offset;
+}
+
+Buffer fractal_kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint32 n_clusters) {
+  size_t mask_size = n_samples * sizeof(uint32);
+  size_t mask_indices_size = n_samples * sizeof(uint32);
+  size_t clusters_size = n_samples * sizeof(uint32);
+  size_t samples_size = n_samples * n_features * sizeof(float);
+
+  size_t centroid_inits_size = n_clusters * n_features * sizeof(float);
+
+  size_t buffer_size = mask_size + mask_indices_size + clusters_size + samples_size + centroid_inits_size + 5 * DEFAULT_ALIGNMENT;
+  void *memory = malloc(buffer_size);
+
+  Buffer buffer;
+  buffer.size = buffer_size;
+  buffer.memory = memory;
+
+  return buffer;
+}
+
+void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
+                    float tolerance, uint32 max_iterations, uint32 init_method, const bool use_wcss, 
+                    std::list<uint32 *> &fractal_result, uint32 *converged_result) {  
+  
+  const uint32 max_centroids = 2;
+
+  Buffer kmeans_buffer = kmeans_allocate_buffer(n_samples, n_features, max_centroids);
+
+  size_t mask_size = n_samples * sizeof(uint32);
+  size_t mask_indices_size = n_samples * sizeof(uint32);
+  size_t clusters_size = n_samples * sizeof(uint32);
+  size_t samples_size = n_samples * n_features * sizeof(float);
+  size_t centroid_inits_size = max_centroids * n_features * sizeof(float);
+
+  size_t buffer_size = mask_size + mask_indices_size + clusters_size + samples_size + centroid_inits_size + 5 * DEFAULT_ALIGNMENT;
+
+  Buffer buffer = fractal_kmeans_allocate_buffer(n_samples, n_features, max_centroids);
+
+  Arena arena = {0};
+  arena_init(&arena, buffer.memory, buffer_size);
+
+  uint32 *mask = (uint32 *) arena_alloc(&arena, mask_size);
+  uint32 *mask_indices = (uint32 *) arena_alloc(&arena, mask_indices_size);
+
+  uint32 *clusters = (uint32 *)arena_alloc(&arena, clusters_size);
+  float *samples = (float *)arena_alloc(&arena, samples_size);
+
+  float *centroid_inits = (float *)arena_alloc(&arena, centroid_inits_size);
+
+  for (uint32 i = 0; i < n_samples; i++) {
+    mask_indices[i] = i;
+  }
+
+  ClusterJob root;
+  root.n_samples = n_samples;
+  root.layer = 0;
+  root.mask_indices_start = 0;
+  
+  uint32 layer = 0;
+  uint32 mask_id = 0;
+
+  uint8 splitting = 0;
+  
+  std::queue<ClusterJob> queue;
+  
+  queue.push(root);
+
+  *converged_result = 1;
+
+  while (queue.size() > 0) {
+    ClusterJob current = queue.front();
+    queue.pop();
+    
+    if (current.layer > layer) {
+      
+      if (splitting == 0) break;
+      splitting = 0;
+
+      mask_id = 0;
+      layer += 1;
+
+      uint32 *mask_result = (uint32 *)malloc(n_samples * sizeof(uint32));
+      memcpy(mask_result, mask, mask_size);
+
+      fractal_result.push_back(mask_result);
+    }
+    
+    if (current.n_samples > min_cluster_size) {
+      splitting = 1;
+
+      for (uint32 i = 0; i < current.n_samples; i++) {
+        uint32 index = mask_indices[current.mask_indices_start + i];
+
+        float *sample = samples + i * n_features;
+        float *dataset_sample = dataset + index * n_features; 
+
+        for (uint32 f = 0; f < n_features; f++) {
+          sample[f] = dataset_sample[f];
+        }
+      }
+
+      uint32 n_splits = 2;  // @TODO: make this a variable number of splits. It has to take min_cluster_size into account though
+
+      init_centroids(init_method, samples, current.n_samples, n_features, n_splits, centroid_inits, NULL);
+      
+      uint32 converged;
+      kmeans_algorithm(samples, current.n_samples, n_features, n_splits, tolerance, 
+                       max_iterations, centroid_inits, use_wcss, NULL, clusters, &converged, &kmeans_buffer);
+      if (converged == 0) *converged_result = 0;
+
+      update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+
+      uint32 mask_indices_at = current.mask_indices_start;
+      for (uint32 offset = 0; offset < n_splits; offset++) {
+        uint32 cluster_size = update_mask_indices(offset, clusters, mask_indices_at, mask_indices, current.mask_indices_start, current.n_samples);
+
+        ClusterJob child;
+        child.n_samples = cluster_size;
+        child.layer = current.layer + 1;
+        child.mask_indices_start = mask_indices_at;
+
+        queue.push(child);
+        
+        mask_indices_at += cluster_size;
+      }
+
+      mask_id += n_splits;
+
+    } else {
+      update_mask(mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+
+      current.layer += 1;
+      queue.push(current);
+
+      mask_id += 1;
+    }
+  }
+
+  arena_free_all(&arena);
+  free(buffer.memory);
+}
+
+void copy_fractal_kmeans_layer_queue_into_array(uint32 n_samples, uint32 *dst, std::list<uint32 *> &fractal_result) {
+  size_t mask_size = n_samples * sizeof(uint32);
+
+  uint32 layer_count = 0;
+  while (fractal_result.size() > 0) {
+    uint32 *mask = fractal_result.front();
+    fractal_result.pop_front();
+
+    uint32 *layer = dst + layer_count * n_samples;
+    memcpy(layer, mask, mask_size);
+
+    layer_count += 1;
+
+    free(mask);
+  }
+}

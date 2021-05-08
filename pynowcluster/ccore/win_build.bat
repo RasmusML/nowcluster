@@ -1,4 +1,4 @@
 if not exist "build" mkdir "build"
 pushd build
-cl ..\*.cpp /LD /O2 /link -EXPORT:k_means -EXPORT:fractal_k_means -EXPORT:copy_fractal_k_means_result /OUT:nowcluster.dll
+cl ..\*.cpp /LD /O2 /openmp /link -EXPORT:interface_kmeans -EXPORT:interface_fractal_kmeans -EXPORT:interface_copy_fractal_kmeans_result /OUT:nowcluster.dll
 popd

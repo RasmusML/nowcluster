@@ -58,7 +58,7 @@ class KMeans():
 
     self._ccore = ccore_library.get()
     
-    self._ccore.k_means.argtypes = [
+    self._ccore.interface_kmeans.argtypes = [
       np.ctypeslib.ndpointer(dtype=np.float32, ndim=2, flags="C_CONTIGUOUS"), 
       ct.c_uint32, 
       ct.c_uint32, 
@@ -67,15 +67,16 @@ class KMeans():
       ct.c_uint32,
       ct.c_uint32,
       np.ctypeslib.ndpointer(dtype=np.float32, ndim=2, flags="C_CONTIGUOUS"), 
+      ct.c_uint32,
 
       np.ctypeslib.ndpointer(dtype=np.float32, ndim=2, flags="C_CONTIGUOUS"), 
       np.ctypeslib.ndpointer(dtype=np.uint32, ndim=1, flags="C_CONTIGUOUS"),
       ct.POINTER(ct.c_uint32)
     ]
 
-    self._ccore.k_means.restype = None
+    self._ccore.interface_kmeans.restype = None
 
-  def process(self, X, n_clusters, centroid_init = "kmeans++", tolerance = 0.001, max_iterations = 0):
+  def process(self, X, n_clusters, centroid_init = "kmeans++", objective_function = "wcss", tolerance = 0.001, max_iterations = 0):
     """
     Parameters
     ----------
@@ -86,12 +87,15 @@ class KMeans():
 
     centroid_init : {"kmeans++", "random", "first"} or ndarray of shape (n_clusters, n_features)
 
+    objective_function : {"wcss", "wcs"}
+                         Whether to minimize the within-cluster sum of squares (wcss) or the within-cluster sum (wcs).
+
     tolerance : if all centroids move less than tolerance during an update, then the centroids have converged
 
     max_iterations : maximum number of iterations (0 means iterate till convergens)
 
     """
-    self.__check_parameters(X, n_clusters, centroid_init, tolerance, max_iterations)
+    self.__check_parameters(X, n_clusters, centroid_init, objective_function, tolerance, max_iterations)
 
     if isinstance(centroid_init, np.ndarray):
       centroid_init_type = Definitions.INIT_PROVIDED
@@ -99,12 +103,17 @@ class KMeans():
       centroid_init_type = self._centroid_inits[centroid_init]
       centroid_init = np.empty((0,0), dtype=np.float32)
 
+    if objective_function == "wcss":
+      objective_function_type = 1
+    else:
+      objective_function_type = 0
+
     centroids_result = np.empty((n_clusters, X.shape[1]), dtype=np.float32) 
     clusters_result = np.empty(X.shape[0], dtype=np.uint32)
 
     converged_result = ct.c_uint32()
 
-    self._ccore.k_means(
+    self._ccore.interface_kmeans(
       X, 
       ct.c_uint32(X.shape[0]), 
       ct.c_uint32(X.shape[1]), 
@@ -113,6 +122,7 @@ class KMeans():
       ct.c_uint32(max_iterations),
       ct.c_uint32(centroid_init_type),
       centroid_init,
+      ct.c_uint32(objective_function_type),
 
       centroids_result,
       clusters_result,
@@ -124,7 +134,7 @@ class KMeans():
 
     return self
 
-  def __check_parameters(self, X, n_clusters, centroid_init, tolerance, max_iterations):
+  def __check_parameters(self, X, n_clusters, centroid_init, objective_function, tolerance, max_iterations):
     if not isinstance(X, np.ndarray):
       raise TypeError("X should be a numpy array.")
 
@@ -139,6 +149,9 @@ class KMeans():
 
     if max_iterations < 0:
       raise ValueError("max_iterations has to be non-negative")
+
+    if not (objective_function == "wcss" or objective_function == "wcs"):
+      raise ValueError("expected objective_function to be \"wcss\" or \"wcs\"")
 
     if isinstance(centroid_init, np.ndarray):
       if centroid_init.ndim != 2:
@@ -200,7 +213,7 @@ class FractalKMeans():
 
     self._ccore = ccore_library.get()
 
-    self._ccore.fractal_k_means.argtypes = [
+    self._ccore.interface_fractal_kmeans.argtypes = [
       np.ctypeslib.ndpointer(dtype=np.float32, ndim=2, flags="C_CONTIGUOUS"), 
       ct.c_uint32, 
       ct.c_uint32,
@@ -208,22 +221,23 @@ class FractalKMeans():
       ct.c_float,
       ct.c_uint32,
       ct.c_uint32,
+      ct.c_uint32,
 
       ct.POINTER(ct.c_uint32),
       ct.POINTER(ct.c_uint32)
     ]
 
-    self._ccore.fractal_k_means.restype = None
+    self._ccore.interface_fractal_kmeans.restype = None
 
-    self._ccore.copy_fractal_k_means_result.argtypes = [
+    self._ccore.interface_copy_fractal_kmeans_result.argtypes = [
       ct.c_uint32, 
 
       np.ctypeslib.ndpointer(dtype=np.uint32, ndim=2, flags="C_CONTIGUOUS")
     ]
 
-    self._ccore.copy_fractal_k_means_result.restype = None
+    self._ccore.interface_copy_fractal_kmeans_result.restype = None
 
-  def process(self, X, min_cluster_size = 1, centroid_init = "kmeans++", tolerance = 0.001, max_iterations = 0):
+  def process(self, X, min_cluster_size = 1, centroid_init = "kmeans++", objective_function = "wcss", tolerance = 0.001, max_iterations = 0):
     """
     Parameters
     ----------
@@ -234,19 +248,27 @@ class FractalKMeans():
 
     centroid_init : {"kmeans++", "random", "first"}
 
+    objective_function : {"wcss", "wcs"}
+                         Whether to minimize the within-cluster sum of squares (wcss) or the within-cluster sum (wcs).
+
     tolerance : if all centroids move less than tolerance during an update, then the centroids have converged
 
     max_iterations : maximum number of iterations (0 means iterate till convergens)
     """
 
-    self.__check_parameters(X, min_cluster_size, centroid_init, tolerance, max_iterations)
+    self.__check_parameters(X, min_cluster_size, centroid_init, objective_function, tolerance, max_iterations)
 
     init_type = self._centroid_inits[centroid_init]
+
+    if objective_function == "wcss":
+      objective_function_type = 1
+    else:
+      objective_function_type = 0
 
     layers_result = ct.c_uint32()
     converged_result = ct.c_uint32()
     
-    self._ccore.fractal_k_means(
+    self._ccore.interface_fractal_kmeans(
         X, 
         ct.c_uint32(X.shape[0]),
         ct.c_uint32(X.shape[1]),
@@ -254,6 +276,7 @@ class FractalKMeans():
         tolerance,
         max_iterations,
         init_type,
+        ct.c_uint32(objective_function_type),
 
         ct.byref(layers_result),
         ct.byref(converged_result))
@@ -262,7 +285,7 @@ class FractalKMeans():
 
     clusters_result = np.empty((layers_result.value, X.shape[0]), dtype=np.uint32) 
 
-    self._ccore.copy_fractal_k_means_result(
+    self._ccore.interface_copy_fractal_kmeans_result(
       ct.c_uint32(X.shape[0]),
 
       clusters_result
@@ -273,12 +296,12 @@ class FractalKMeans():
     return self
 
   def get_num_layers(self):
-    return self._clusters.shape[0]
+    return self.clusters.shape[0]
 
   def get_layer(self, n):
-    return self._clusters[n,:]
+    return self.clusters[n,:]
 
-  def __check_parameters(self, X, min_cluster_size, centroid_init, tolerance, max_iterations):
+  def __check_parameters(self, X, min_cluster_size, centroid_init, objective_function, tolerance, max_iterations):
 
     if not isinstance(X, np.ndarray):
       raise TypeError("X should be a numpy array.")
@@ -297,6 +320,9 @@ class FractalKMeans():
 
     if min_cluster_size < 1:
       raise ValueError("min_cluster_size has to >= 1.")
+
+    if not (objective_function == "wcss" or objective_function == "wcs"):
+      raise ValueError("expected objective_function to be \"wcss\" or \"wcs\"")
 
     if self._centroid_inits[centroid_init] is None:
       raise TypeError("invalid centroid init")

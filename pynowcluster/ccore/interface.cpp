@@ -1,22 +1,37 @@
 #include <list>
 
-#include "clusters.h"
+#include "types.h"
+#include "kmeans.h"
+#include "fractal_kmeans.h"
+#include "initialization_procedures.h"
 
-void k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float tolerance, 
-             uint32 max_iterations, uint32 init_method, float *custom_centroid_init, float *centroids_result, 
-             uint32 *groups_result, uint32 *converged_result) {
-  k_means_algorithm(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, init_method, custom_centroid_init, centroids_result, groups_result, converged_result);
+void interface_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float tolerance, 
+                      uint32 max_iterations, uint32 init_method, float *custom_centroid_init, uint32 use_wcss, 
+                      float *centroids_result, uint32 *groups_result, uint32 *converged_result) {
+
+  float centroids_size = n_clusters * n_features * sizeof(float);
+  float *centroid_init = (float *)malloc(centroids_size);
+  
+  init_centroids(init_method, dataset, n_samples, n_features, n_clusters, centroid_init, custom_centroid_init);
+
+  Buffer kmeans_buffer = kmeans_allocate_buffer(n_samples, n_features, n_clusters);
+
+  kmeans_algorithm(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, use_wcss, centroids_result, groups_result, converged_result, &kmeans_buffer);
+  
+  free(kmeans_buffer.memory);
+  free(centroid_init);
 }
 
 std::list<uint32 *> fractal_result;
 
-void fractal_k_means(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                     float tolerance, uint32 max_iterations, uint32 init_method, uint32 *layers_result, uint32 *converged_result) {  
+void interface_fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, float tolerance, 
+                              uint32 max_iterations, uint32 init_method, uint32 use_wcss, 
+                              uint32 *layers_result, uint32 *converged_result) {  
 
-  fractal_k_means_full(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, fractal_result, converged_result);
+  fractal_kmeans(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, use_wcss == 1, fractal_result, converged_result);
   *layers_result = (uint32) fractal_result.size();
 }
 
-void copy_fractal_k_means_result(uint32 n_samples, uint32 *dst) {
-  copy_fractal_k_means_layer_queue_into_array(n_samples, dst, fractal_result);
+void interface_copy_fractal_kmeans_result(uint32 n_samples, uint32 *dst) {
+  copy_fractal_kmeans_layer_queue_into_array(n_samples, dst, fractal_result);
 }
