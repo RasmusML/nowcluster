@@ -1,5 +1,8 @@
-#include <list>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
+#include "queue.h"
 #include "types.h"
 #include "kmeans.h"
 #include "fractal_kmeans.h"
@@ -22,16 +25,22 @@ void interface_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint3
   free(centroid_init);
 }
 
-std::list<uint32 *> fractal_result;
+Fractal_Kmeans_Result *fractal_result;
 
 void interface_fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, float tolerance, 
                               uint32 max_iterations, uint32 init_method, uint32 use_wcss, 
                               uint32 *layers_result, uint32 *converged_result) {  
 
-  fractal_kmeans(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, use_wcss == 1, fractal_result, converged_result);
-  *layers_result = (uint32) fractal_result.size();
+  Fractal_Kmeans_Result result = fractal_kmeans(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, use_wcss == 1);
+  
+  fractal_result = (Fractal_Kmeans_Result *)malloc(sizeof(Fractal_Kmeans_Result));
+  memcpy(fractal_result, &result, sizeof(Fractal_Kmeans_Result));
+
+  *layers_result = result.num_layers;
+  *converged_result = result.converged;
 }
 
 void interface_copy_fractal_kmeans_result(uint32 n_samples, uint32 *dst) {
-  copy_fractal_kmeans_layer_queue_into_array(n_samples, dst, fractal_result);
+  transform_fractal_kmeans_result_into_array(n_samples, dst, fractal_result);
+  fractal_result = NULL;
 }

@@ -2,12 +2,11 @@
 #include <stdlib.h>
 #include <string.h> // memcpy, memset
 #include <queue>
-#include <list>
 
 #include "kmeans.h"
 #include "fractal_kmeans.h"
 #include "arena.h"
-#include "linkedlist.h"
+#include "queue.h"
 
 #include "initialization_procedures.h"
 
@@ -87,9 +86,8 @@ Buffer fractal_kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint3
   return buffer;
 }
 
-void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                    float tolerance, uint32 max_iterations, uint32 init_method, const bool use_wcss, 
-                    std::list<uint32 *> &fractal_result, uint32 *converged_result) {  
+Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
+                                    float tolerance, uint32 max_iterations, uint32 init_method, const bool use_wcss) {  
   
   const uint32 max_centroids = 2;
 
@@ -130,11 +128,14 @@ void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 
 
   uint8 splitting = 0;
   
+  Queue *layers = queue_create();
+  //Queue *jobs = queue_create();
+
   std::queue<ClusterJob> queue;
   
   queue.push(root);
 
-  *converged_result = 1;
+  uint32 converged_result = 1;
 
   while (queue.size() > 0) {
     ClusterJob current = queue.front();
@@ -151,7 +152,7 @@ void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 
       uint32 *mask_result = (uint32 *)malloc(n_samples * sizeof(uint32));
       memcpy(mask_result, mask, mask_size);
 
-      fractal_result.push_back(mask_result);
+      queue_enqueue((void *)mask_result, layers);
     }
     
     if (current.n_samples > min_cluster_size) {
@@ -175,7 +176,7 @@ void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 
       uint32 converged;
       kmeans_algorithm(samples, current.n_samples, n_features, n_splits, tolerance, 
                        max_iterations, centroid_inits, use_wcss, NULL, clusters, &converged, &kmeans_buffer);
-      if (converged == 0) *converged_result = 0;
+      if (converged == 0) converged_result = 0;
 
       update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
 
@@ -207,21 +208,26 @@ void fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 
 
   arena_free_all(&arena);
   free(buffer.memory);
+
+  Fractal_Kmeans_Result result;
+  result.layers = layers;
+  result.num_layers = layer;
+  result.converged = converged_result;
+
+  return result;
 }
 
-void copy_fractal_kmeans_layer_queue_into_array(uint32 n_samples, uint32 *dst, std::list<uint32 *> &fractal_result) {
+void transform_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *result) {
   size_t mask_size = n_samples * sizeof(uint32);
 
-  uint32 layer_count = 0;
-  while (fractal_result.size() > 0) {
-    uint32 *mask = fractal_result.front();
-    fractal_result.pop_front();
-
-    uint32 *layer = dst + layer_count * n_samples;
+  for (uint32 i = 0; i < result->num_layers; i++) {
+    uint32 *mask = (uint32 *)queue_dequeue(result->layers);
+    uint32 *layer = array + i * n_samples;
     memcpy(layer, mask, mask_size);
-
-    layer_count += 1;
-
+    
     free(mask);
   }
+
+  queue_free(result->layers);
+  free(result);
 }
