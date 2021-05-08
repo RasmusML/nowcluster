@@ -21,14 +21,14 @@ def kmeans_test():
   print(centroid_init.shape)
   #centroid_init = np.zeros((clusters, 2), dtype=np.float32)
   print("centroid init:\n", centroid_init)
-  """
+  
   start = time.time()
   sk_result = sklearn.cluster.KMeans(n_clusters=clusters, init=centroid_init, n_init=1, algorithm="full").fit(X)
   end = time.time()
   print("sklearn took:", end - start)
   print("sklearn centroids:\n", sk_result.cluster_centers_)
   print("sklearn groups:", sk_result.labels_)
-  """
+  
   
   start = time.time()
   nc_result = pynowcluster.clusters.KMeans().process(X, clusters, centroid_init, "wcs", 0.001)

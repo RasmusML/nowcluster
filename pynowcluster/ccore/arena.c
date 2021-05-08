@@ -66,12 +66,10 @@ void *arena_alloc_align(Arena *a, size_t size, size_t align) {
 		memset(ptr, 0, size);
 		return ptr;
 	}
-	// Return NULL if the arena is out of memory (or handle differently)
-  //assert(0 && "Out of memory");
-	return NULL;
+
+  assert(0 && "Out of memory");
 }
 
-// Because C doesn't have default parameters
 void *arena_alloc(Arena *a, size_t size) {
 	return arena_alloc_align(a, size, DEFAULT_ALIGNMENT);
 }
@@ -106,7 +104,6 @@ void *arena_resize_align(Arena *a, void *old_memory, size_t old_size, size_t new
 
 }
 
-// Because C doesn't have default parameters
 void *arena_resize(Arena *a, void *old_memory, size_t old_size, size_t new_size) {
 	return arena_resize_align(a, old_memory, old_size, new_size, DEFAULT_ALIGNMENT);
 }
@@ -115,63 +112,3 @@ void arena_free_all(Arena *a) {
 	a->curr_offset = 0;
 	a->prev_offset = 0;
 }
-
-/*
-// Extra Features
-typedef struct Temp_Arena_Memory Temp_Arena_Memory;
-struct Temp_Arena_Memory {
-	Arena *arena;
-	size_t prev_offset;
-	size_t curr_offset;
-};
-
-Temp_Arena_Memory temp_arena_memory_begin(Arena *a) {
-	Temp_Arena_Memory temp;
-	temp.arena = a;
-	temp.prev_offset = a->prev_offset;
-	temp.curr_offset = a->curr_offset;
-	return temp;
-}
-
-void temp_arena_memory_end(Temp_Arena_Memory temp) {
-	temp.arena->prev_offset = temp.prev_offset;
-	temp.arena->curr_offset = temp.curr_offset;
-}
-
-int main(int argc, char **argv) {
-	int i;
-
-	unsigned char backing_buffer[256];
-	Arena a = {0};
-	arena_init(&a, backing_buffer, 256);
-
-	for (i = 0; i < 10; i++) {
-		int *x;
-		float *f;
-		char *str;
-
-		// Reset all arena offsets for each loop
-		arena_free_all(&a);
-
-		x = (int *)arena_alloc(&a, sizeof(int));
-		f = (float *)arena_alloc(&a, sizeof(float));
-		str = arena_alloc(&a, 10);
-
-		*x = 123;
-		*f = 987;
-		memmove(str, "Hellope", 7);
-
-		printf("%p: %d\n", x, *x);
-		printf("%p: %f\n", f, *f);
-		printf("%p: %s\n", str, str);
-
-		str = arena_resize(&a, str, 10, 16);
-		memmove(str+7, " world!", 7);
-		printf("%p: %s\n", str, str);
-	}
-
-	arena_free_all(&a);
-
-	return 0;
-}
-*/

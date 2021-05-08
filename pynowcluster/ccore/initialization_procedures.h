@@ -1,7 +1,5 @@
 #pragma once
 
-#include <float.h> // DBL_MAX
-
 #include "types.h"
 
 void init_centroids(uint32 init_method, float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroid_init, float *custom_centroid_init);

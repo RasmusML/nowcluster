@@ -89,14 +89,14 @@ void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples,
 
 }
 
-int NUM_THREADS;
+static int NUM_THREADS;
 
 static
 void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes) {
 
   int num_threads = (n_samples * n_features) / MIN_DIMENSION_SIZE_PER_THREAD;
 
-  if (num_threads >= 4) {
+  if (num_threads >= 2) {
     if (num_threads > NUM_THREADS) num_threads = NUM_THREADS;
     assign_samples_to_clusters_multi_threaded(dataset, n_samples, n_features, n_clusters, centroids, clusters, cluster_sizes, num_threads);
         
@@ -170,7 +170,7 @@ void kmeans_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint3
                       float *centroids_result, uint32 *groups_result, uint32 *converged_result, Buffer *buffer) {
 
 
-  int NUM_THREADS = omp_get_num_threads();
+  NUM_THREADS = omp_get_num_threads();
 
   size_t centroids_size = n_clusters * n_features * sizeof(float);
   size_t cluster_sizes_size = n_clusters * sizeof(uint32);
@@ -375,54 +375,3 @@ void kmeans_algorithm_old(float *dataset, uint32 n_samples, uint32 n_features, u
 }
 
 */
-
-/*
-
-
-    
-    std::queue<std::thread> queue;
-    for (uint32 i = 0; i < processor_count - 1; i++) {
-      memset(jobs[i], 0, cluster_sizes_size);
-
-      uint32 offset = i * samples_per_thread;
-      
-      //printf("offset: %u, samples_per_thread: %u\n", offset, samples_per_thread);
-      //assign_samples_to_clusters(dataset + i * samples_per_thread, samples_per_thread, n_features, n_clusters, centroids, clusters, cluster_sizes);
-      std::thread thread(assign_samples_to_clusters, &dataset[offset], 
-                         samples_per_thread, n_features, n_clusters, centroids, &clusters[offset], jobs[i]);
-
-      queue.push(std::move(thread));
-    }
-
-    //assign_samples_to_clusters(dataset + (processor_count - 1) * samples_per_thread, samples_per_thread + samples_rest, n_features, n_clusters, centroids, clusters, cluster_sizes);
-
-    memset(jobs[processor_count - 1], 0, cluster_sizes_size);
-    
-    uint32 offset = (processor_count - 1) * samples_per_thread;
-    printf("offset: %u, samples_per_thread: %u\n", offset, samples_per_thread);
-    std::thread thread(assign_samples_to_clusters, dataset + offset, 
-                       samples_per_thread + samples_rest, n_features, n_clusters, centroids, clusters + offset, jobs[processor_count - 1]);
-    queue.push(std::move(thread));
-    
-    for (uint32 i = 0; i < processor_count; i++) {
-      std::thread& thread = queue.front();
-      thread.join();
-      queue.pop();
-
-      uint32 *job = jobs[i];
-      for (uint32 c = 0; c < n_clusters; c++) {
-        cluster_sizes[c] += job[c];
-      }
-    }
-
-    printf("\nall thread joined\n");
-
-    for (uint32 c = 0; c < n_clusters; c++) {
-        printf("%u:%u ", c, cluster_sizes[c]);
-    }
-    printf("\n");
-    
-    memset(cluster_sizes, 0, cluster_sizes_size);
-    memset(new_centroids, 0, new_centroids_size);
-    
-    */

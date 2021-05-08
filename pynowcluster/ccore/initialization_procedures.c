@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <float.h> // DBL_MAX
 
 #include "initialization_procedures.h"
-
 
 const uint32 INIT_PROVIDED = 0;
 const uint32 INIT_RANDOMLY = 1;

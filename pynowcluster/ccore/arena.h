@@ -4,9 +4,9 @@
 
 struct Arena {
 	unsigned char *buf;
-	size_t         buf_len;
-	size_t         prev_offset; // This will be useful for later on
-	size_t         curr_offset;
+	size_t buf_len;
+	size_t prev_offset;
+	size_t curr_offset;
 };
 
 typedef struct Arena Arena;
