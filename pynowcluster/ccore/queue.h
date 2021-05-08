@@ -1,22 +1,21 @@
-#ifndef queue__h
-#define queue__h
+#pragma once
 
-typedef struct Node node;
 struct Node {
 	void *value;
-	Node *next;
+	struct Node *next;
 };
 
-typedef struct Queue Queue;
+typedef struct Node Node;
+
 struct Queue {
 	int size;
 	Node *head;
 	Node *tail;
 };
 
+typedef struct Queue Queue;
+
 Queue *queue_create();
 int queue_enqueue(void *value, Queue *q);
 void* queue_dequeue(Queue *q);
 void queue_free(Queue *q);
-
-#endif

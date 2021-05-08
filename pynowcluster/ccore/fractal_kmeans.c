@@ -1,36 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // memcpy, memset
-#include <queue>
 
 #include "kmeans.h"
 #include "fractal_kmeans.h"
 #include "arena.h"
-#include "queue.h"
-
+#include "ringbuffer.h"
 #include "initialization_procedures.h"
-
-void print_sample(float *sample, uint32 n_features) {
-  printf("(");
-  for (uint32 i = 0; i < n_features - 1; i++) {
-    printf("%f, ", *(sample + i));
-  }
-  printf("%f", *(sample + n_features - 1));
-  printf(")\n");
-}
-
-void print_samples(float *samples, uint32 n_samples, uint32 n_features) {
-  for (uint32 i = 0; i < n_samples; i++) {
-    float *sample_p = samples + n_features * i;
-    print_sample(sample_p, n_features);
-  }
-}
 
 struct ClusterJob {
   uint32 layer;
   uint32 n_samples;
   uint32 mask_indices_start;
 };
+
+typedef struct ClusterJob ClusterJob;
 
 static
 void update_mask(uint32 id, uint32 *mask, uint32 *mask_indices, uint32 mask_indices_start, uint32 n_samples) {
@@ -87,7 +71,7 @@ Buffer fractal_kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint3
 }
 
 Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                                    float tolerance, uint32 max_iterations, uint32 init_method, const bool use_wcss) {  
+                                    float tolerance, uint32 max_iterations, uint32 init_method, uint8 use_wcss) {  
   
   const uint32 max_centroids = 2;
 
@@ -118,10 +102,6 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
     mask_indices[i] = i;
   }
 
-  ClusterJob root;
-  root.n_samples = n_samples;
-  root.layer = 0;
-  root.mask_indices_start = 0;
   
   uint32 layer = 0;
   uint32 mask_id = 0;
@@ -129,19 +109,22 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   uint8 splitting = 0;
   
   Queue *layers = queue_create();
-  //Queue *jobs = queue_create();
 
-  std::queue<ClusterJob> queue;
-  
-  queue.push(root);
+  const uint32 max_jobs = n_samples + 1;
+  RingBuffer jobs;
+  ringbuffer_init(max_jobs, sizeof(ClusterJob), &jobs);
+
+  ClusterJob *root = (ClusterJob *)ringbuffer_alloc(&jobs);
+  root->n_samples = n_samples;
+  root->layer = 0;
+  root->mask_indices_start = 0;
 
   uint32 converged_result = 1;
 
-  while (queue.size() > 0) {
-    ClusterJob current = queue.front();
-    queue.pop();
+  while (jobs.used > 0) {
+    ClusterJob *current = (ClusterJob *)ringbuffer_get(&jobs);
     
-    if (current.layer > layer) {
+    if (current->layer > layer) {
       
       if (splitting == 0) break;
       splitting = 0;
@@ -155,11 +138,11 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
       queue_enqueue((void *)mask_result, layers);
     }
     
-    if (current.n_samples > min_cluster_size) {
+    if (current->n_samples > min_cluster_size) {
       splitting = 1;
 
-      for (uint32 i = 0; i < current.n_samples; i++) {
-        uint32 index = mask_indices[current.mask_indices_start + i];
+      for (uint32 i = 0; i < current->n_samples; i++) {
+        uint32 index = mask_indices[current->mask_indices_start + i];
 
         float *sample = samples + i * n_features;
         float *dataset_sample = dataset + index * n_features; 
@@ -171,39 +154,42 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
       uint32 n_splits = 2;  // @TODO: make this a variable number of splits. It has to take min_cluster_size into account though
 
-      init_centroids(init_method, samples, current.n_samples, n_features, n_splits, centroid_inits, NULL);
+      init_centroids(init_method, samples, current->n_samples, n_features, n_splits, centroid_inits, NULL);
       
       uint32 converged;
-      kmeans_algorithm(samples, current.n_samples, n_features, n_splits, tolerance, 
+      kmeans_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, 
                        max_iterations, centroid_inits, use_wcss, NULL, clusters, &converged, &kmeans_buffer);
       if (converged == 0) converged_result = 0;
 
-      update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+      update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current->mask_indices_start, current->n_samples);
 
-      uint32 mask_indices_at = current.mask_indices_start;
+      uint32 mask_indices_at = current->mask_indices_start;
       for (uint32 offset = 0; offset < n_splits; offset++) {
-        uint32 cluster_size = update_mask_indices(offset, clusters, mask_indices_at, mask_indices, current.mask_indices_start, current.n_samples);
+        uint32 cluster_size = update_mask_indices(offset, clusters, mask_indices_at, mask_indices, current->mask_indices_start, current->n_samples);
 
-        ClusterJob child;
-        child.n_samples = cluster_size;
-        child.layer = current.layer + 1;
-        child.mask_indices_start = mask_indices_at;
+        ClusterJob *child = (ClusterJob *)ringbuffer_alloc(&jobs);
+        child->n_samples = cluster_size;
+        child->layer = current->layer + 1;
+        child->mask_indices_start = mask_indices_at;
 
-        queue.push(child);
-        
         mask_indices_at += cluster_size;
       }
 
       mask_id += n_splits;
 
     } else {
-      update_mask(mask_id, mask, mask_indices, current.mask_indices_start, current.n_samples);
+      update_mask(mask_id, mask, mask_indices, current->mask_indices_start, current->n_samples);
 
-      current.layer += 1;
-      queue.push(current);
+      ClusterJob *copy = (ClusterJob *)ringbuffer_alloc(&jobs);
+      copy->layer = layer + 1;
+      copy->n_samples = current->n_samples;
+      copy->mask_indices_start = current->mask_indices_start;
 
       mask_id += 1;
     }
+
+    ringbuffer_free(&jobs);
+    
   }
 
   arena_free_all(&arena);

@@ -4,12 +4,18 @@
 
 #include "initialization_procedures.h"
 
+
+const uint32 INIT_PROVIDED = 0;
+const uint32 INIT_RANDOMLY = 1;
+const uint32 INIT_KMEANS_PLUS_PLUS = 2;
+const uint32 INIT_TO_FIRST_SAMPLES = 3;
+
 void init_centroids(uint32 init_method, float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroid_init, float *custom_centroid_init) {
   if (init_method == INIT_PROVIDED) memcpy(centroid_init, custom_centroid_init, n_clusters * n_features * sizeof(float));
   else if (init_method == INIT_KMEANS_PLUS_PLUS) init_centroids_using_kmeansplusplus(dataset, n_samples, n_features, n_clusters, centroid_init);
   else if (init_method == INIT_RANDOMLY) init_centroids_randomly(dataset, n_samples, n_features, n_clusters, centroid_init);     
   else if (init_method == INIT_TO_FIRST_SAMPLES) init_centroids_to_first_samples(dataset, n_samples, n_features, n_clusters, centroid_init);     
-  else assert(false);
+  else assert(0);
 }
 
 #define RANDOM(min, max) (((max) - (min)) * (rand() / (double) RAND_MAX) + (min))

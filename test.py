@@ -41,7 +41,7 @@ def kmeans_test():
 
 def fractal_k_means_test():
   np.random.seed(0)
-  n = 7_000
+  n = 7_000_000
   x = np.random.normal(0, 10, n)
   y = np.random.normal(0, 5, n)
   

@@ -3,15 +3,10 @@
 #include <float.h> // DBL_MAX
 #include <string.h> // memcpy, memset
 #include <assert.h>
-#include <queue>
-#include <list>
-
 #include <omp.h>
 
 #include "arena.h"
-
 #include "kmeans.h"
-
 #include "initialization_procedures.h"
 
 // https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-directives?view=msvc-160#for-openmp
@@ -24,8 +19,6 @@ inline double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements
   }
   return dst;
 }
-
-const int NUM_THREADS = omp_get_num_threads();
 
 #define MIN_DIMENSION_SIZE_PER_THREAD 1000
 
@@ -60,10 +53,12 @@ static
 void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, int num_threads) {
   omp_set_num_threads(num_threads);
 
+  int s;
+
   #pragma omp parallel
   { 
     #pragma omp for
-    for (int s = 0; s < n_samples; s++) {
+    for (s = 0; s < n_samples; s++) {
       float *sample = dataset + s * n_features;
 
       double min_distance = DBL_MAX;
@@ -93,6 +88,8 @@ void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples,
   }
 
 }
+
+int NUM_THREADS;
 
 static
 void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes) {
@@ -169,8 +166,11 @@ Buffer kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint32 n_clus
 }
 
 void kmeans_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
-                      float tolerance, uint32 max_iterations, float *centroid_init, const bool use_wcss,
+                      float tolerance, uint32 max_iterations, float *centroid_init, uint8 use_wcss,
                       float *centroids_result, uint32 *groups_result, uint32 *converged_result, Buffer *buffer) {
+
+
+  int NUM_THREADS = omp_get_num_threads();
 
   size_t centroids_size = n_clusters * n_features * sizeof(float);
   size_t cluster_sizes_size = n_clusters * sizeof(uint32);
