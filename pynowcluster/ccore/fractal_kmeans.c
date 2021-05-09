@@ -121,7 +121,7 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
   uint32 converged_result = 1;
 
-  while (jobs.used > 0) {
+  while (jobs.used > 0) { // TODO: while (1)
     ClusterJob *current = (ClusterJob *)ringbuffer_get(&jobs);
     
     if (current->layer > layer) {

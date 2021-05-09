@@ -25,7 +25,7 @@ void interface_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint3
   free(centroid_init);
 }
 
-Fractal_Kmeans_Result *fractal_result;
+static Fractal_Kmeans_Result *fractal_result;
 
 void interface_fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, float tolerance, 
                               uint32 max_iterations, uint32 init_method, uint32 use_wcss, 

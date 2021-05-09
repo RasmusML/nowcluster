@@ -7,7 +7,6 @@
 
 #include "arena.h"
 #include "kmeans.h"
-#include "initialization_procedures.h"
 
 // https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-directives?view=msvc-160#for-openmp
 
