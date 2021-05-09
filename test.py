@@ -86,8 +86,8 @@ def comprehensive_fractal_k_means_performanc_test(f):
       print("{:.2f}s N={} D={}".format(elapsed, size, dim))
 
 
-def f_fkm_wrapper(fkm):
-  return lambda X : fkm.process(X, min_cluster_size=10, objective_function="wcs")
+def f_fkm_wrapper(fkm, min_cluster_size = 10, objective_function = "wcss"):
+  return lambda X : fkm.process(X, min_cluster_size=min_cluster_size, objective_function=objective_function)
 
 fractal_k_means = pynowcluster.clusters.FractalKMeans()
 f = f_fkm_wrapper(fractal_k_means)

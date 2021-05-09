@@ -11,7 +11,7 @@ class Definitions:
 class KMeans():
   """K-means clustering.
 
-  A wrapper to a C/C++ implementation of Lloyd's algorithm. 
+  A wrapper to a C implementation of Lloyd's algorithm. 
 
   Attributes
   ----------
@@ -171,7 +171,7 @@ class KMeans():
 class FractalKMeans():
   """Fractal K-means clustering.
 
-  A wrapper to a C/C++ implementation of a fractal clustering algorithm using Lloyd's algorithm. 
+  A wrapper to a C implementation of a fractal clustering algorithm using Lloyd's algorithm. 
 
   Attributes
   ----------
