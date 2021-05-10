@@ -42,9 +42,7 @@ void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples
 
     assert(closest_centroid_id != -1);
 
-    clusters[s] = closest_centroid_id;
-    cluster_sizes[closest_centroid_id] += 1;
- 
+    clusters[s] = closest_centroid_id; 
   }
 }
 
@@ -81,11 +79,6 @@ void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples,
   }
   
   //const int ithread = omp_get_thread_num();  
-  for (int32 s = 0; s < n_samples; s++) {
-    uint32 closest_centroid_id = clusters[s];
-    cluster_sizes[closest_centroid_id] += 1;
-  }
-
 }
 
 static int NUM_THREADS;
@@ -109,9 +102,10 @@ float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint
   float change = 0.0f;
 
   for (uint32 s = 0; s < n_samples; s++) {
-    float *sample = dataset + s * n_features;
-
     uint32 closest_centroid_id = clusters[s];
+    cluster_sizes[closest_centroid_id] += 1;
+
+    float *sample = dataset + s * n_features;
 
     for (uint32 f = 0; f < n_features; f++) {
       float *new_centroid = new_centroids + closest_centroid_id * n_features;
