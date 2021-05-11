@@ -3,6 +3,7 @@
 #include <string.h> // memcpy, memset
 
 #include "kmeans.h"
+#include "kmeans_wcs.h"
 #include "fractal_kmeans.h"
 #include "arena.h"
 #include "ringbuffer.h"
@@ -157,8 +158,9 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
       init_centroids(init_method, samples, current->n_samples, n_features, n_splits, centroid_inits, NULL);
       
       uint32 converged;
-      kmeans_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, 
-                       max_iterations, centroid_inits, use_wcss, NULL, clusters, &converged, &kmeans_buffer);
+
+      if (use_wcss) kmeans_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &kmeans_buffer);
+      else kmeans_wcs_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &kmeans_buffer);
       if (converged == 0) converged_result = 0;
 
       update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current->mask_indices_start, current->n_samples);

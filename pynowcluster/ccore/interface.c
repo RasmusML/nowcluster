@@ -5,6 +5,7 @@
 #include "queue.h"
 #include "types.h"
 #include "kmeans.h"
+#include "kmeans_wcs.h"
 #include "fractal_kmeans.h"
 #include "initialization_procedures.h"
 
@@ -17,11 +18,16 @@ void interface_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint3
   
   init_centroids(init_method, dataset, n_samples, n_features, n_clusters, centroid_init, custom_centroid_init);
 
-  Buffer kmeans_buffer = kmeans_allocate_buffer(n_samples, n_features, n_clusters);
+  if (use_wcss) {
+    Buffer kmeans_buffer = kmeans_allocate_buffer(n_samples, n_features, n_clusters);
+    kmeans_algorithm(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, centroids_result, groups_result, converged_result, &kmeans_buffer);
+    free(kmeans_buffer.memory);
+  } else {
+    Buffer kmeans_wcs_buffer = kmeans_wcs_allocate_buffer(n_samples, n_features, n_clusters);
+    kmeans_wcs_algorithm(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, centroids_result, groups_result, converged_result, &kmeans_wcs_buffer);
+    free(kmeans_wcs_buffer.memory);
+  }
 
-  kmeans_algorithm(dataset, n_samples, n_features, n_clusters, tolerance, max_iterations, centroid_init, use_wcss, centroids_result, groups_result, converged_result, &kmeans_buffer);
-  
-  free(kmeans_buffer.memory);
   free(centroid_init);
 }
 
