@@ -222,6 +222,7 @@ class FractalKMeans():
       ct.c_uint32,
       ct.c_uint32,
       ct.c_uint32,
+      ct.c_uint32,
 
       ct.POINTER(ct.c_uint32),
       ct.POINTER(ct.c_uint32)
@@ -237,7 +238,7 @@ class FractalKMeans():
 
     self._ccore.interface_copy_fractal_kmeans_result.restype = None
 
-  def process(self, X, min_cluster_size = 1, centroid_init = "kmeans++", objective_function = "wcss", tolerance = 0.001, max_iterations = 0):
+  def process(self, X, min_cluster_size = 1, centroid_init = "kmeans++", num_child_clusters = 2, objective_function = "wcss", tolerance = 0.001, max_iterations = 0):
     """
     Parameters
     ----------
@@ -248,6 +249,8 @@ class FractalKMeans():
 
     centroid_init : {"kmeans++", "random", "first"}
 
+    num_child_clusters : number of child clusters for a given cluster.
+
     objective_function : {"wcss", "wcs"}
                          Whether to minimize the within-cluster sum of squares (wcss) or the within-cluster sum (wcs).
 
@@ -256,7 +259,7 @@ class FractalKMeans():
     max_iterations : maximum number of iterations (0 means iterate till convergens)
     """
 
-    self.__check_parameters(X, min_cluster_size, centroid_init, objective_function, tolerance, max_iterations)
+    self.__check_parameters(X, min_cluster_size, centroid_init, num_child_clusters,objective_function, tolerance, max_iterations)
 
     init_type = self._centroid_inits[centroid_init]
 
@@ -276,6 +279,7 @@ class FractalKMeans():
         tolerance,
         max_iterations,
         init_type,
+        num_child_clusters,
         ct.c_uint32(objective_function_type),
 
         ct.byref(layers_result),
@@ -301,7 +305,7 @@ class FractalKMeans():
   def get_layer(self, n):
     return self.clusters[n,:]
 
-  def __check_parameters(self, X, min_cluster_size, centroid_init, objective_function, tolerance, max_iterations):
+  def __check_parameters(self, X, min_cluster_size, centroid_init, num_child_clusters, objective_function, tolerance, max_iterations):
 
     if not isinstance(X, np.ndarray):
       raise TypeError("X should be a numpy array.")
@@ -320,6 +324,9 @@ class FractalKMeans():
 
     if min_cluster_size < 1:
       raise ValueError("min_cluster_size has to >= 1.")
+
+    if (num_child_clusters < 2):
+      raise ValueError("num_child_clusters has to be >= 2.")
 
     if not (objective_function == "wcss" or objective_function == "wcs"):
       raise ValueError("expected objective_function to be \"wcss\" or \"wcs\"")

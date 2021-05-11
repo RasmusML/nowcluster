@@ -1,18 +1,10 @@
 #include <stdlib.h>
 #include "queue.h"
 
-Queue *queue_create() {
-	Queue *q = (Queue *)malloc(sizeof(Queue));
-
-	if (q == NULL) {
-    return NULL;
-  }
-
+void queue_init(Queue *q) {
 	q->size = 0;
 	q->head = NULL;
 	q->tail = NULL;
-
-	return q;
 }
 
 int queue_enqueue(void *value, Queue *q) {

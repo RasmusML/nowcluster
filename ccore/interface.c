@@ -34,10 +34,10 @@ void interface_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint3
 static Fractal_Kmeans_Result *fractal_result;
 
 void interface_fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, float tolerance, 
-                              uint32 max_iterations, uint32 init_method, uint32 use_wcss, 
+                              uint32 max_iterations, uint32 init_method, uint32 split_size, uint32 use_wcss, 
                               uint32 *layers_result, uint32 *converged_result) {  
 
-  Fractal_Kmeans_Result result = fractal_kmeans(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, use_wcss == 1);
+  Fractal_Kmeans_Result result = fractal_kmeans(dataset, n_samples, n_features, min_cluster_size, tolerance, max_iterations, init_method, split_size, use_wcss);
   
   fractal_result = (Fractal_Kmeans_Result *)malloc(sizeof(Fractal_Kmeans_Result));
   memcpy(fractal_result, &result, sizeof(Fractal_Kmeans_Result));

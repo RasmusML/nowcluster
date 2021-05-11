@@ -72,9 +72,9 @@ Buffer fractal_kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint3
 }
 
 Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                                    float tolerance, uint32 max_iterations, uint32 init_method, uint8 use_wcss) {  
+                                    float tolerance, uint32 max_iterations, uint32 init_method, uint32 split_size, uint8 use_wcss) {  
   
-  const uint32 max_centroids = 2;
+  const uint32 max_centroids = split_size;
 
   Buffer split_buffer;
   if (use_wcss) {
@@ -113,9 +113,10 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
   uint8 splitting = 0;
   
-  Queue *layers = queue_create();
+  Queue *layers = (Queue *)malloc(sizeof(Queue));
+  queue_init(layers);
 
-  const uint32 MAX_JOBS = n_samples + 20;
+  const uint32 MAX_JOBS = n_samples + 1;
   RingBuffer jobs;
   ringbuffer_init(MAX_JOBS, sizeof(ClusterJob), &jobs);
 
@@ -126,11 +127,8 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
   uint32 converged_result = 1;
 
-  int i = 0;
-
   while (1) {
     ClusterJob *current = (ClusterJob *)ringbuffer_get(&jobs);
-    i += 1;
     
     if (current->layer > layer) {
       
@@ -160,7 +158,9 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
         }
       }
 
-      uint32 n_splits = 2;  // @TODO: make this a variable number of splits. It has to take min_cluster_size into account though
+
+      uint32 n_splits = split_size;
+      if (n_splits > current->n_samples) n_splits = current->n_samples;
 
       init_centroids(init_method, samples, current->n_samples, n_features, n_splits, centroid_inits, NULL);
       

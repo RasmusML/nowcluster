@@ -36,8 +36,6 @@ void init_centroids_randomly(float *dataset, uint32 n_samples, uint32 n_features
   }
 }
 
-#include <stdio.h>
-
 void init_centroids_using_kmeansplusplus(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids) {
   // centroid 1
   uint32 sample = (uint32) RANDOM(0, n_samples - 1);
