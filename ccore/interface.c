@@ -47,6 +47,5 @@ void interface_fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_feature
 }
 
 void interface_copy_fractal_kmeans_result(uint32 n_samples, uint32 *dst) {
-  transform_fractal_kmeans_result_into_array(n_samples, dst, fractal_result);
-  fractal_result = NULL;
+  consume_fractal_kmeans_result_into_array(n_samples, dst, fractal_result);
 }

@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // memcpy, memset
 
@@ -128,7 +127,7 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   uint32 converged_result = 1;
 
   while (1) {
-    ClusterJob *current = (ClusterJob *)ringbuffer_get(&jobs);
+    ClusterJob *current = (ClusterJob *)ringbuffer_get_first(&jobs);
     
     if (current->layer > layer) {
       
@@ -213,7 +212,7 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   return result;
 }
 
-void transform_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *result) {
+void consume_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *result) {
   size_t mask_size = n_samples * sizeof(uint32);
 
   for (uint32 i = 0; i < result->num_layers; i++) {

@@ -16,7 +16,7 @@ struct RingBuffer {
 
 void ringbuffer_init(uint32 capacity, size_t element_size, RingBuffer *buffer);
 void *ringbuffer_alloc(RingBuffer *buffer);
-void *ringbuffer_get(RingBuffer *buffer);
+void *ringbuffer_get_first(RingBuffer *buffer);
 void ringbuffer_free(RingBuffer *buffer);
 
 #endif

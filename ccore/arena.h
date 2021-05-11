@@ -1,6 +1,8 @@
 #ifndef ARENA_H
 #define ARENA_H
 
+#include "types.h"
+
 #define DEFAULT_ALIGNMENT (2*sizeof(void *))
 
 struct Arena {

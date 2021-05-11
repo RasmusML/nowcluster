@@ -129,11 +129,9 @@ fractal_k_means_test2()
 fractal_k_means_test3()
 """
 
-"""
 fractal_k_means = pynowcluster.clusters.FractalKMeans()
 f = f_fkm_wrapper(fractal_k_means)
 
 comprehensive_fractal_k_means_performanc_test(f)
-"""
 
-kmeans_comparison_test()
+#kmeans_comparison_test()

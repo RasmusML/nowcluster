@@ -24,7 +24,7 @@ void *ringbuffer_alloc(RingBuffer *buffer) {
   return pointer;
 }
 
-void *ringbuffer_get(RingBuffer *buffer) {
+void *ringbuffer_get_first(RingBuffer *buffer) {
   return (void *) ((uint8 *)buffer->memory + buffer->first * buffer->element_size);
 }
 

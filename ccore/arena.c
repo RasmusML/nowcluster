@@ -1,25 +1,7 @@
-#include <stddef.h>
-#include <stdint.h>
-
-#include "arena.h"
-
-#if !defined(__cplusplus)
-	#if (defined(_MSC_VER) && _MSC_VER < 1800) || (!defined(_MSC_VER) && !defined(__STDC_VERSION__))
-		#ifndef true
-		#define true  (0 == 0)
-		#endif
-		#ifndef false
-		#define false (0 != 0)
-		#endif
-		typedef unsigned char bool;
-	#else
-		#include <stdbool.h>
-	#endif
-#endif
-
-#include <stdio.h>
 #include <assert.h>
 #include <string.h>
+
+#include "arena.h"
 
 bool is_power_of_two(uintptr_t x) {
 	return (x & (x-1)) == 0;

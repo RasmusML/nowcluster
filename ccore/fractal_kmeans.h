@@ -15,6 +15,6 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
                                      float tolerance, uint32 max_iterations, uint32 init_method, uint32 split_size, uint8 use_wcss);  
 
 
-void transform_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *fractal_result);
+void consume_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *fractal_result);
 
 #endif
