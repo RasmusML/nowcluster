@@ -8,6 +8,7 @@ if (_platform == "win32"):
     PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + "build" + os.sep + "nowcluster.dll"
 elif (_platform == "linux"):
     PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + "build" + os.sep + "nowcluster.so"
+    print(PATH_NOWCLUSTER_CCORE)
 else:
     raise OSError(f"{_platform} unsupported platform." )
 

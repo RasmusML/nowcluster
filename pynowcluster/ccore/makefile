@@ -1,11 +1,11 @@
 CC      := gcc
-CFLAGS  := -c -Isrc -Wall -Werror -fpic
-LDFLAGS := -shared
+CFLAGS  := -c -Wall -Werror -fopenmp -fpic
+LDFLAGS := -shared -fopenmp
 
-TARGET  := build/k_means.so
+TARGET  := build/nowcluster.so
 
-SOURCES := $(wildcard src/*.c)
-OBJECTS := $(SOURCES:src/%.c=%.o)
+SOURCES := $(wildcard *.c)
+OBJECTS := $(SOURCES:%.c=%.o)
 
 lib-build: lib-compile lib-clean
 

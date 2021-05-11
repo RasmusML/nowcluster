@@ -10,7 +10,7 @@
 
 // https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-directives?view=msvc-160#for-openmp
 
-inline double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements) {
+double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements) {
   double dst = 0;
   for (uint32 i = 0; i < n_elements; i++) {
     float dt = v1[i] - v2[i];
