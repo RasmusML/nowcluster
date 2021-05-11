@@ -129,9 +129,85 @@ fractal_k_means_test2()
 fractal_k_means_test3()
 """
 
-fractal_k_means = pynowcluster.clusters.FractalKMeans()
-f = f_fkm_wrapper(fractal_k_means)
+#fractal_k_means = pynowcluster.clusters.FractalKMeans()
+#f = f_fkm_wrapper(fractal_k_means)
 
-comprehensive_fractal_k_means_performanc_test(f)
+#comprehensive_fractal_k_means_performanc_test(f)
 
 #kmeans_comparison_test()
+
+def kmeans_pyclustering(X, n_clusters):
+  from pyclustering.cluster.kmeans import kmeans, kmeans_visualizer
+  from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
+  from pyclustering.samples.definitions import FCPS_SAMPLES
+  from pyclustering.utils import read_sample
+  from pyclustering.core.wrapper import ccore_library
+
+  import numpy as np
+  import time
+
+  # make sure the C/C++ implementation is actually available.
+  ccore = ccore_library.workable()
+  assert ccore
+
+  initial_centers = kmeans_plusplus_initializer(X, n_clusters).initialize()
+  kmeans_instance = kmeans(X, initial_centers)
+
+  start = time.time()
+  kmeans_instance.process()
+  elapsed = time.time() - start
+
+  return elapsed
+
+
+def kmeans_pynowcluster(X, n_clusters):
+  import pynowcluster.clusters
+  import numpy as np
+
+  import time
+
+  start = time.time()
+  nc_result = pynowcluster.clusters.KMeans().process(X, n_clusters, centroid_init="kmeans++")
+
+  elapsed = time.time() - start
+
+  return elapsed
+
+
+def k_means_speed_test():
+  K = np.array([2, 4, 6, 8, 10, 20, 40, 100])
+  D = np.array([2, 4, 6, 8, 10, 20, 40])
+  N = np.array([10, 100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
+
+  iterations = 2
+
+  single_elapses = np.empty(iterations)
+
+  elapses = np.empty((2, K.size, D.size, N.size))
+  np.random.seed(0)
+
+  for ik, k in enumerate(K):
+    for id, d in enumerate(D):
+      for _in, n in enumerate(N):
+
+        X = np.random.normal(0, 100, (n,d))
+        X = X.astype(dtype=np.float32)
+
+        
+        for i in range(iterations):
+          single_elapses[i] = kmeans_pyclustering(X, k)
+        
+        avg_elapsed1 = single_elapses.mean()
+        elapses[0,ik,id,_in] = avg_elapsed1
+        
+
+        for i in range(iterations):
+          single_elapses[i] = kmeans_pynowcluster(X, k)
+        
+        avg_elapsed2 = single_elapses.mean()
+        elapses[1,ik,id,_in] = avg_elapsed2
+    
+        
+        print("K:{} D:{} N:{} {:.2f}s <-> {:.2f}s".format(k, d, n, avg_elapsed1, avg_elapsed2))
+
+k_means_speed_test()
