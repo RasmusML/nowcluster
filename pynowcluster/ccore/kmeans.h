@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KMEANS_H
+#define KMEANS_H
 
 #include "types.h"
 #include "buffer.h"
@@ -8,3 +9,5 @@ void kmeans_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint3
                       float *centroids_result, uint32 *groups_result, uint32 *converged_result, Buffer *buffer);
 
 Buffer kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint32 n_clusters);
+
+#endif

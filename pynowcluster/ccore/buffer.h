@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BUFFER_H
+#define BUFFER_H
 
 struct Buffer {
   void *memory;
@@ -6,3 +7,5 @@ struct Buffer {
 };
 
 typedef struct Buffer Buffer;
+
+#endif

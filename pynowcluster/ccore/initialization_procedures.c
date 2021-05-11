@@ -4,6 +4,7 @@
 #include <float.h> // DBL_MAX
 
 #include "initialization_procedures.h"
+#include "distances.h"
 
 const uint32 INIT_PROVIDED = 0;
 const uint32 INIT_RANDOMLY = 1;
@@ -19,15 +20,6 @@ void init_centroids(uint32 init_method, float *dataset, uint32 n_samples, uint32
 }
 
 #define RANDOM(min, max) (((max) - (min)) * (rand() / (double) RAND_MAX) + (min))
-
-inline double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements) {
-  double dst = 0;
-  for (uint32 i = 0; i < n_elements; i++) {
-    float dt = v1[i] - v2[i];
-    dst += dt * dt;
-  }
-  return dst;
-}
 
 void init_centroids_randomly(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids) {
   uint32 range = n_samples / n_clusters;
@@ -66,7 +58,7 @@ void init_centroids_using_kmeansplusplus(float *dataset, uint32 n_samples, uint3
     for (uint32 s = 0; s < n_samples; s++) {
       float *sample = dataset + s * n_features;
 
-      float distance = (float) squared_euclidian_distance(centroid, sample, n_features);
+      float distance = squared_euclidian_distance(centroid, sample, n_features);
       if (distance < distances[s]) distances[s] = distance;
     }
 

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INITIALIZATION_PRECEDURES_H
+#define INITIALIZATION_PRECEDURES_H
 
 #include "types.h"
 
@@ -8,3 +9,4 @@ void init_centroids_randomly(float *dataset, uint32 n_samples, uint32 n_features
 void init_centroids_using_kmeansplusplus(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids);
 void init_centroids_to_first_samples(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids);
 
+#endif

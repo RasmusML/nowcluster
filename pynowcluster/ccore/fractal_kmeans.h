@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FRACTAL_KMEANS_H
+#define FRACTAL_KMEANS_H
 
 #include "queue.h"
 #include "types.h"
@@ -15,3 +16,5 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
 
 void transform_fractal_kmeans_result_into_array(uint32 n_samples, uint32 *array, Fractal_Kmeans_Result *fractal_result);
+
+#endif

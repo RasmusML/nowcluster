@@ -1,4 +1,5 @@
-#pragma once
+#ifndef QUEUE_H
+#define QUEUE_H
 
 struct Node {
 	void *value;
@@ -19,3 +20,5 @@ Queue *queue_create();
 int queue_enqueue(void *value, Queue *q);
 void* queue_dequeue(Queue *q);
 void queue_free(Queue *q);
+
+#endif

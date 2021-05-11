@@ -7,17 +7,10 @@
 
 #include "arena.h"
 #include "kmeans.h"
+#include "distances.h"
 
 // https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-directives?view=msvc-160#for-openmp
 
-double squared_euclidian_distance(float *v1, float *v2, uint32 n_elements) {
-  double dst = 0;
-  for (uint32 i = 0; i < n_elements; i++) {
-    float dt = v1[i] - v2[i];
-    dst += dt * dt;
-  }
-  return dst;
-}
 
 #define MIN_DIMENSION_SIZE_PER_THREAD 1000
 
@@ -26,13 +19,13 @@ void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples
   for (int s = 0; s < n_samples; s++) {
     float *sample = dataset + s * n_features;
 
-    double min_distance = DBL_MAX;
+    float min_distance = FLT_MAX;
     uint32 closest_centroid_id = -1;
 
     for (uint32 c = 0; c < n_clusters; c++) {
       float *centroid = centroids + c * n_features; 
 
-      double distance = squared_euclidian_distance(sample, centroid, n_features); 
+      float distance = squared_euclidian_distance(sample, centroid, n_features); 
 
       if (distance < min_distance) {
         min_distance = distance;
@@ -58,13 +51,13 @@ void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples,
     for (s = 0; s < n_samples; s++) {
       float *sample = dataset + s * n_features;
 
-      double min_distance = DBL_MAX;
+      float min_distance = FLT_MAX;
       uint32 closest_centroid_id = -1;
 
       for (uint32 c = 0; c < n_clusters; c++) {
         float *centroid = centroids + c * n_features; 
 
-        double distance = squared_euclidian_distance(sample, centroid, n_features); 
+        float distance = squared_euclidian_distance(sample, centroid, n_features); 
 
         if (distance < min_distance) {
           min_distance = distance;
