@@ -1,6 +1,6 @@
 CC      := gcc
-CFLAGS  := -c -Wall -Werror -fopenmp -fpic
-LDFLAGS := -shared -fopenmp
+CFLAGS  := -c -Wall -Werror -fopenmp -fpic -O
+LDFLAGS := -shared -fopenmp -O
 
 TARGET  := build/nowcluster.so
 

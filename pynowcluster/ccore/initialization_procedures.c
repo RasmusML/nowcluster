@@ -41,7 +41,6 @@ void init_centroids_randomly(float *dataset, uint32 n_samples, uint32 n_features
 void init_centroids_using_kmeansplusplus(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids) {
   // centroid 1
   uint32 sample = (uint32) RANDOM(0, n_samples - 1);
-  printf("RANDOM %u\n", sample);
   for (uint32 f = 0; f < n_features; f++) {
       uint32 i = f;
       uint32 j = sample * n_features + f;

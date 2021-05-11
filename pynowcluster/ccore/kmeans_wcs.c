@@ -12,6 +12,9 @@
 
 #define MIN_DIMENSION_SIZE_PER_THREAD 1000
 
+#define EPSILON 0.000001
+#define MAX_SAME_CHANGE 10
+
 static
 void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {
   for (int s = 0; s < n_samples; s++) {
@@ -34,7 +37,7 @@ void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples
     assert(closest_centroid_id != -1);
 
     clusters[s] = closest_centroid_id; 
-    distances[s] = (float) sqrt(min_distance);
+    distances[s] = (float) sqrt(min_distance) + EPSILON;
   }
 }
 
@@ -67,11 +70,9 @@ void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples,
       assert(closest_centroid_id != -1);
 
       clusters[s] = closest_centroid_id;
-      distances[s] = (float) sqrt(min_distance);
+      distances[s] = (float) sqrt(min_distance) + EPSILON;
     }
   }
-  
-  //const int ithread = omp_get_thread_num();  
 }
 
 static int NUM_THREADS;
@@ -92,20 +93,22 @@ void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_featu
 
 static 
 float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, uint32 *clusters, float *centroids, float *new_centroids, float *lambda_invs, float *distances, uint32 *cluster_sizes) {
-  float change = 0.0f;
+  float change = 0.0;
 
   for (uint32 s = 0; s < n_samples; s++) {
     uint32 closest_centroid_id = clusters[s];
     cluster_sizes[closest_centroid_id] += 1;
 
     float distance = distances[s];
-    if (distance > 0) lambda_invs[closest_centroid_id] += 1 / distance;
+    assert(distance != 0);
+
+    lambda_invs[closest_centroid_id] += 1 / distance;
 
     float *sample = dataset + s * n_features;
 
     for (uint32 f = 0; f < n_features; f++) {
       float *new_centroid = new_centroids + closest_centroid_id * n_features;
-      if (distance > 0) new_centroid[f] += sample[f] / distance;
+      new_centroid[f] += sample[f] / distance;
     }
   }
 
@@ -113,11 +116,9 @@ float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint
   for (uint32 c = 0; c < n_clusters; c++) {
     float *centroid = centroids + c * n_features;
     float *new_centroid = new_centroids + c * n_features;
-    uint32 group_count = cluster_sizes[c];
 
     float lambda_inv = lambda_invs[c];
-
-    if (group_count == 0) continue;
+    assert(lambda_inv != 0);
 
     for (uint32 f = 0; f < n_features; f++) {
       new_centroid[f] /= lambda_inv;
@@ -125,10 +126,6 @@ float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint
     
     // calculate distance between new and old centroid
     float distance_metric = squared_euclidian_distance(new_centroid, centroid, n_features);
-
-    for (uint32 f = 0; f < n_features; f++) {
-      centroid[f] = new_centroid[f];
-    }
 
     if (distance_metric > change) {
       change = distance_metric;
@@ -159,7 +156,8 @@ Buffer kmeans_wcs_allocate_buffer(uint32 n_samples, uint32 n_features, uint32 n_
 }
 
 void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
-                          float tolerance, uint32 max_iterations, float *centroid_init, float *centroids_result, uint32 *groups_result, uint32 *converged_result, Buffer *buffer) {
+                          float tolerance, uint32 max_iterations, float *centroid_init, float *centroids_result, uint32 *groups_result, 
+                          uint32 *converged_result, Buffer *buffer) {
 
 
   NUM_THREADS = omp_get_num_threads();
@@ -187,7 +185,10 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
   memcpy(centroids, centroid_init, centroids_size);
 
   uint32 converged = 1;
-  
+
+  float prev_change = -1;
+  uint32 same_change = 0;
+
   uint32 iteration = 1;
   while(1) {
     // reset new centroids + cluster sizes
@@ -198,6 +199,12 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
     assign_samples_to_clusters(dataset, n_samples, n_features, n_clusters, centroids, clusters, cluster_sizes, distances);
     
     float change = update_centroids(dataset, n_samples, n_features, n_clusters, clusters, centroids, new_centroids, lambda_invs, distances, cluster_sizes);
+
+    same_change += 1;
+    if (change != prev_change) same_change = 0;
+    prev_change = change;
+
+    if (same_change >= MAX_SAME_CHANGE) break;
 
     if (change < tolerance) break;
     
@@ -221,155 +228,3 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
   arena_free_all(&arena);
 
 }
-
-
-/*
-void kmeans_algorithm_old(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
-                      float tolerance, uint32 max_iterations, float *centroid_init, const bool use_wcss,
-                      float *centroids_result, uint32 *groups_result, uint32 *converged_result) {
-
-  size_t centroids_size = n_clusters * n_features * sizeof(float);
-  size_t cluster_sizes_size = n_clusters * sizeof(uint32);
-  size_t clusters_size = n_samples * sizeof(uint32);
-  size_t new_centroids_size = centroids_size;
-
-  size_t lambda_inv_size = n_clusters * sizeof(float);
-
-  float *centroids;
-  uint32 *cluster_sizes;
-  uint32 *clusters;
-  float *new_centroids;
-
-  centroids = (float *)malloc(centroids_size);
-  cluster_sizes = (uint32 *)malloc(cluster_sizes_size);
-  clusters = (uint32 *)malloc(clusters_size);
-  new_centroids = (float *)malloc(new_centroids_size); 
-
-  memcpy(centroids, centroid_init, centroids_size);
-
-  float *lambda_inv;
-  if (!use_wcss) lambda_inv = (float *)malloc(lambda_inv_size);
-
-  uint32 converged = 1;
-  
-  uint32 iteration = 1;
-  while(1) {
-    // reset new centroids + cluster sizes
-    memset(cluster_sizes, 0, cluster_sizes_size);
-    memset(new_centroids, 0, new_centroids_size);
-
-    if (!use_wcss) {
-      memset(lambda_inv, 0, lambda_inv_size);
-    }
-
-    // compute distances and assign samples to clusters
-    for (uint32 s = 0; s < n_samples; s++) {
-      float *sample = dataset + s * n_features;
-
-      double min_distance = DBL_MAX;
-      uint32 closest_centroid_id = -1;
-
-      for (uint32 c = 0; c < n_clusters; c++) {
-        float *centroid = centroids + c * n_features; 
-
-        double distance = squared_euclidian_distance(sample, centroid, n_features); 
-
-        if (distance < min_distance) {
-          min_distance = distance;
-          closest_centroid_id = c;
-        }
-      }
-
-      assert(closest_centroid_id != -1);
-
-      clusters[s] = closest_centroid_id;
-      cluster_sizes[closest_centroid_id] += 1;
-
-      for (uint32 f = 0; f < n_features; f++) {
-        float *new_centroid = new_centroids + closest_centroid_id * n_features;
-
-        if (use_wcss) {
-          new_centroid[f] += sample[f];
-        } else {
-          if (min_distance == 0) {
-            //new_centroid[f] += sample[f];
-          } else {
-            new_centroid[f] += sample[f] / (float) min_distance;
-          }
-        }
-      }
-
-      // @TODO: figure out what do if min_distance is 0 or very close to 0.
-      if (!use_wcss) {
-        if (min_distance == 0) {  
-          //lambda_inv[closest_centroid_id] += 1;
-        } else {
-          lambda_inv[closest_centroid_id] += 1 / (float) min_distance;
-        }
-      }
-    }
-
-    // compute new centroid features and check whether the centroids have converged
-    double centroid_moved_by = 0; 
-    for (uint32 c = 0; c < n_clusters; c++) {
-      float *centroid = centroids + c * n_features;
-      float *new_centroid = new_centroids + c * n_features;
-      uint32 group_count = cluster_sizes[c];
-
-      if (group_count == 0) continue;
-
-      for (uint32 f = 0; f < n_features; f++) {
-        if (use_wcss) {
-          new_centroid[f] /= group_count;
-        } else {
-          new_centroid[f] /= lambda_inv[c];
-        }
-      }
-
-      // calculate distance between new and old centroid
-      double distance_metric = squared_euclidian_distance(new_centroid, centroid, n_features);
-
-      for (uint32 f = 0; f < n_features; f++) {
-        centroid[f] = new_centroid[f];
-      }
-
-      if (centroid_moved_by < distance_metric) {
-        centroid_moved_by = distance_metric;
-      }
-    }
-
-    printf("moved by %f\n", centroid_moved_by);
-    if (centroid_moved_by < tolerance) {
-      break;
-    }
-    
-    if (max_iterations != 0 && iteration >= max_iterations) {
-      converged = 0;
-      break;
-    }
-    
-    iteration += 1;
-  }
-
-  if (groups_result != NULL) {  
-    memcpy(groups_result, clusters, clusters_size);
-  }
-
-  if (centroids_result != NULL) {
-    memcpy(centroids_result, centroids, centroids_size);
-  }
-
-  if (converged_result != NULL) {
-    *converged_result = converged;
-  }
-
-  if (!use_wcss) free(lambda_inv); 
-
-  free(centroids);
-  free(cluster_sizes);
-  free(clusters);
-  free(new_centroids);
-
-}
-
-*/

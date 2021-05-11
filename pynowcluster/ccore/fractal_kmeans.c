@@ -76,7 +76,12 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   
   const uint32 max_centroids = 2;
 
-  Buffer kmeans_buffer = kmeans_allocate_buffer(n_samples, n_features, max_centroids);
+  Buffer split_buffer;
+  if (use_wcss) {
+    split_buffer = kmeans_allocate_buffer(n_samples, n_features, max_centroids);
+  } else {
+    split_buffer = kmeans_wcs_allocate_buffer(n_samples, n_features, max_centroids);
+  }
 
   size_t mask_size = n_samples * sizeof(uint32);
   size_t mask_indices_size = n_samples * sizeof(uint32);
@@ -102,7 +107,6 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   for (uint32 i = 0; i < n_samples; i++) {
     mask_indices[i] = i;
   }
-
   
   uint32 layer = 0;
   uint32 mask_id = 0;
@@ -111,9 +115,9 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
   
   Queue *layers = queue_create();
 
-  const uint32 max_jobs = n_samples + 1;
+  const uint32 MAX_JOBS = n_samples + 20;
   RingBuffer jobs;
-  ringbuffer_init(max_jobs, sizeof(ClusterJob), &jobs);
+  ringbuffer_init(MAX_JOBS, sizeof(ClusterJob), &jobs);
 
   ClusterJob *root = (ClusterJob *)ringbuffer_alloc(&jobs);
   root->n_samples = n_samples;
@@ -122,8 +126,11 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
 
   uint32 converged_result = 1;
 
-  while (jobs.used > 0) { // TODO: while (1)
+  int i = 0;
+
+  while (1) {
     ClusterJob *current = (ClusterJob *)ringbuffer_get(&jobs);
+    i += 1;
     
     if (current->layer > layer) {
       
@@ -159,8 +166,9 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
       
       uint32 converged;
 
-      if (use_wcss) kmeans_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &kmeans_buffer);
-      else kmeans_wcs_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &kmeans_buffer);
+      if (use_wcss) kmeans_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &split_buffer);
+      else kmeans_wcs_algorithm(samples, current->n_samples, n_features, n_splits, tolerance, max_iterations, centroid_inits, NULL, clusters, &converged, &split_buffer);
+      
       if (converged == 0) converged_result = 0;
 
       update_mask_by_offsets(clusters, mask_id, mask, mask_indices, current->mask_indices_start, current->n_samples);
@@ -191,7 +199,7 @@ Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_
     }
 
     ringbuffer_free(&jobs);
-    
+
   }
 
   arena_free_all(&arena);
