@@ -70,6 +70,10 @@ def fractal_k_means_test2():
   print("nowcluster layers:\n", fkm.clusters.shape)  
   print("nowcluster converged:\n", fkm.converged)
   
+#fractal_k_means_test()
+#fractal_k_means_test2()
+#fractal_k_means_test3()
+
 def fractal_k_means_test():
   np.random.seed(0)
   n = 1_000_000
@@ -89,52 +93,54 @@ def fractal_k_means_test():
   print("nowcluster converged:\n", fkm.converged)
 
 
-def fractal_k_means_performance_test(N, D, iterations, f):
-  np.random.seed(0)
+def fractal_kmeans_pynowcluster(X):
+  import pynowcluster.clusters
+  import time
 
-  X = np.random.normal(0, 100, (N,D))
-  X = X.astype(dtype=np.float32)
+  fractal_kmeans = pynowcluster.clusters.FractalKMeans()
 
-  elapses = np.empty(iterations)
+  start = time.time()
+  fractal_kmeans.process(X, objective_function="wcs")
+  elapsed = time.time() - start
 
-  for i in range(iterations):
-    start = time.time()
-    f(X)  
-    elapsed = time.time() - start
-    elapses[i] = elapsed
-  
-  return np.mean(elapses)
+  return elapsed
 
-def comprehensive_fractal_k_means_performanc_test(f):
-  sizes = np.array([1000, 10_000, 100_000, 1_000_000, 10_000_000])
-  dims = np.array([2, 4, 8, 16, 32])
+def fractal_kmeans_speedtest():
+  kmeans_times_file = "fractal_kmeans_times.txt"
+
+  D = np.array([2, 4, 6, 8, 10, 20, 40])
+  N = np.array([10, 100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
+
   iterations = 2
 
-  elapses = np.empty((sizes.size, dims.size))
+  single_elapses = np.empty(iterations)
 
-  for d, dim in enumerate(dims):
-    for s, size in enumerate(sizes):
-      elapsed = fractal_k_means_performance_test(size, dim, iterations, f)
-      elapses[s,d] = elapsed
+  elapses = np.empty((2, D.size, N.size))
+  np.random.seed(0)
 
-      print("{:.2f}s N={} D={}".format(elapsed, size, dim))
+  for id, d in enumerate(D):
+    for _in, n in enumerate(N):
 
+      X = np.random.normal(0, 100, (n,d))
+      X = X.astype(dtype=np.float32)
 
-def f_fkm_wrapper(fkm, min_cluster_size = 10, objective_function = "wcs"):
-  return lambda X : fkm.process(X, min_cluster_size=min_cluster_size, objective_function=objective_function)
+      #for i in range(iterations):
+      #  single_elapses[i] = kmeans_pyclustering(X, k)
+      #
+      #avg_elapsed1 = single_elapses.mean()
+      #elapses[0,id,_in] = avg_elapsed1
+      
+      for i in range(iterations):
+        single_elapses[i] = fractal_kmeans_pynowcluster(X)
+      
+      avg_elapsed2 = single_elapses.mean()
+      elapses[1,id,_in] = avg_elapsed2
 
-"""
-fractal_k_means_test()
-fractal_k_means_test2()
-fractal_k_means_test3()
-"""
+      summary = "D:{} N:{} {:.2f}s <-> {:.2f}s".format(d, n, avg_elapsed1, avg_elapsed2)
+      append_to_file(summary + "\n", kmeans_times_file)
+      
+      print(summary)
 
-#fractal_k_means = pynowcluster.clusters.FractalKMeans()
-#f = f_fkm_wrapper(fractal_k_means)
-
-#comprehensive_fractal_k_means_performanc_test(f)
-
-#kmeans_comparison_test()
 
 def kmeans_pyclustering(X, n_clusters):
   from pyclustering.cluster.kmeans import kmeans, kmeans_visualizer
@@ -142,8 +148,6 @@ def kmeans_pyclustering(X, n_clusters):
   from pyclustering.samples.definitions import FCPS_SAMPLES
   from pyclustering.utils import read_sample
   from pyclustering.core.wrapper import ccore_library
-
-  import numpy as np
   import time
 
   # make sure the C/C++ implementation is actually available.
@@ -162,24 +166,15 @@ def kmeans_pyclustering(X, n_clusters):
 
 def kmeans_pynowcluster(X, n_clusters):
   import pynowcluster.clusters
-  import numpy as np
-
   import time
 
   start = time.time()
   nc_result = pynowcluster.clusters.KMeans().process(X, n_clusters, centroid_init="kmeans++")
-
   elapsed = time.time() - start
 
   return elapsed
 
-
-def append_to_file(str, filename):
-  with open(filename, "a") as f:
-    f.write(str)
-
 def k_means_speed_test():
-
   kmeans_times_file = "kmeans_times.txt"
 
   K = np.array([2, 4, 6, 8, 10, 20, 40, 100])
@@ -217,7 +212,9 @@ def k_means_speed_test():
         
         print(summary)
 
-#k_means_speed_test()
+def append_to_file(str, filename):
+  with open(filename, "a") as f:
+    f.write(str)
 
 def plot():
   import matplotlib.pyplot as plt
@@ -231,6 +228,9 @@ def plot():
 
   title = "{}-means D={}".format(2, 4)
   plt.title(title)
+
+  plt.xlabel("N")
+  plt.ylabel("execution time (s)")
   
   plt.plot(steps, times1, 'b', label="PyClustering")
   plt.scatter(steps, times1)
@@ -242,3 +242,4 @@ def plot():
   plt.show()
 
 plot()
+#k_means_speed_test()

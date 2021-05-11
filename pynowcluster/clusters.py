@@ -25,6 +25,7 @@ class KMeans():
 
   Usage
   -----
+  import numpy as np
   from pynowcluster.clusters import KMeans
 
   data_size = 100
@@ -186,6 +187,7 @@ class FractalKMeans():
 
   Usage
   -----
+  import numpy as np
   from pynowcluster.clusters import FractalKMeans
 
   n = 1_000_000
@@ -195,9 +197,7 @@ class FractalKMeans():
   X = np.stack((x,y), axis=1)
   X = X.astype(np.float32)
 
-  start = time.time()
   fkm = FractalKMeans().process(X)
-  end = time.time()
 
   print(fkm.clusters)
   print(fkm.converged)
