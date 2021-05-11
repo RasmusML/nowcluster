@@ -12,7 +12,7 @@ else:
     core_architecture = "32-bit"
 
 if (_platform == "win32"):
-    PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + core_architecture + os.sep + "win32" + os.sep + "nowcluster.dll"
+    PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + core_architecture + os.sep + "win" + os.sep + "nowcluster.dll"
 elif (_platform == "linux"):
     PATH_NOWCLUSTER_CCORE = pynowcluster.__path__[0] + os.sep + "ccore" + os.sep + core_architecture + os.sep + "linux" + os.sep + "nowcluster.so"
 else:
