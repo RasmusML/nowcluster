@@ -174,7 +174,14 @@ def kmeans_pynowcluster(X, n_clusters):
   return elapsed
 
 
+def append_to_file(str, filename):
+  with open(filename, "a") as f:
+    f.write(str)
+
 def k_means_speed_test():
+
+  kmeans_times_file = "kmeans_times.txt"
+
   K = np.array([2, 4, 6, 8, 10, 20, 40, 100])
   D = np.array([2, 4, 6, 8, 10, 20, 40])
   N = np.array([10, 100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
@@ -193,21 +200,45 @@ def k_means_speed_test():
         X = np.random.normal(0, 100, (n,d))
         X = X.astype(dtype=np.float32)
 
-        
         for i in range(iterations):
           single_elapses[i] = kmeans_pyclustering(X, k)
         
         avg_elapsed1 = single_elapses.mean()
         elapses[0,ik,id,_in] = avg_elapsed1
         
-
         for i in range(iterations):
           single_elapses[i] = kmeans_pynowcluster(X, k)
         
         avg_elapsed2 = single_elapses.mean()
         elapses[1,ik,id,_in] = avg_elapsed2
-    
-        
-        print("K:{} D:{} N:{} {:.2f}s <-> {:.2f}s".format(k, d, n, avg_elapsed1, avg_elapsed2))
 
-k_means_speed_test()
+        summary = "K:{} D:{} N:{} {:.2f}s <-> {:.2f}s".format(k, d, n, avg_elapsed1, avg_elapsed2)
+        append_to_file(summary + "\n", kmeans_times_file)
+        
+        print(summary)
+
+#k_means_speed_test()
+
+def plot():
+  import matplotlib.pyplot as plt
+
+  times1 = np.arange(1, 100)
+  times2 = np.arange(1, 100) - 10
+
+  print(times1.shape)
+
+  steps = np.arange(1, times1.shape[0] + 1)
+
+  title = "{}-means D={}".format(2, 4)
+  plt.title(title)
+  
+  plt.plot(steps, times1, 'b', label="PyClustering")
+  plt.scatter(steps, times1)
+  
+  plt.plot(steps, times2, 'g', label="NowCluster")
+  plt.scatter(steps, times2)
+  
+  plt.legend()
+  plt.show()
+
+plot()
