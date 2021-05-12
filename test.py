@@ -76,7 +76,7 @@ def fractal_k_means_test2():
 
 def fractal_k_means_test():
   np.random.seed(0)
-  n = 1_000_000
+  n = 7_000_000
   x = np.random.normal(0, 100, n)
   y = np.random.normal(0, 50, n)
   
@@ -177,9 +177,9 @@ def kmeans_pynowcluster(X, n_clusters):
 def k_means_speed_test():
   kmeans_times_file = "kmeans_times.txt"
 
-  K = np.array([2, 4, 6, 8, 10, 20, 40, 100])
-  D = np.array([2, 4, 6, 8, 10, 20, 40])
-  N = np.array([10, 100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
+  K = np.array([40, 100])
+  D = np.array([8, 10, 20, 40])
+  N = np.array([100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
 
   iterations = 2
 
@@ -241,5 +241,7 @@ def plot():
   plt.legend()
   plt.show()
 
-plot()
+#plot()
 #k_means_speed_test()
+
+fractal_k_means_test()

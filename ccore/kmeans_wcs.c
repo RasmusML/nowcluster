@@ -15,9 +15,15 @@
 #define EPSILON 0.000001
 #define MAX_SAME_CHANGE 10
 
+static int NUM_THREADS;
+
 static
-void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {
-  for (int s = 0; s < n_samples; s++) {
+void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {
+  int dimension = (n_samples * n_features * n_clusters) / MIN_DIMENSION_SIZE_PER_THREAD;
+  int s;
+ 
+  #pragma omp parallel for if (dimension > MIN_DIMENSION_SIZE_PER_THREAD)
+  for (s = 0; s < n_samples; s++) {
     float *sample = dataset + s * n_features;
 
     float min_distance = FLT_MAX;
@@ -36,59 +42,10 @@ void assign_samples_to_clusters_single_threaded(float *dataset, uint32 n_samples
 
     assert(closest_centroid_id != -1);
 
-    clusters[s] = closest_centroid_id; 
+    clusters[s] = closest_centroid_id;
     distances[s] = (float) sqrt(min_distance) + EPSILON;
   }
-}
 
-static
-void assign_samples_to_clusters_multi_threaded(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances, int num_threads) {
-  omp_set_num_threads(num_threads);
-
-  int s;
-
-  #pragma omp parallel
-  { 
-    #pragma omp for
-    for (s = 0; s < n_samples; s++) {
-      float *sample = dataset + s * n_features;
-
-      float min_distance = FLT_MAX;
-      uint32 closest_centroid_id = -1;
-
-      for (uint32 c = 0; c < n_clusters; c++) {
-        float *centroid = centroids + c * n_features; 
-
-        float distance = squared_euclidian_distance(sample, centroid, n_features); 
-
-        if (distance < min_distance) {
-          min_distance = distance;
-          closest_centroid_id = c;
-        }
-      }
-
-      assert(closest_centroid_id != -1);
-
-      clusters[s] = closest_centroid_id;
-      distances[s] = (float) sqrt(min_distance) + EPSILON;
-    }
-  }
-}
-
-static int NUM_THREADS;
-
-static
-void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {
-
-  int num_threads = (n_samples * n_features) / MIN_DIMENSION_SIZE_PER_THREAD;
-
-  if (num_threads >= 2) {
-    if (num_threads > NUM_THREADS) num_threads = NUM_THREADS;
-    assign_samples_to_clusters_multi_threaded(dataset, n_samples, n_features, n_clusters, centroids, clusters, cluster_sizes, distances, num_threads);
-        
-  } else {
-    assign_samples_to_clusters_single_threaded(dataset, n_samples, n_features, n_clusters, centroids, clusters, cluster_sizes, distances);
-  } 
 }
 
 static 
