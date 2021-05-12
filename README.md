@@ -20,7 +20,7 @@ print(fkm.converged)
 ```
 ## Installation
 ### Windows
-1. Update win_startup.bat to your vcvarsall.bat
+1. Update the path to vcvarsall.bat inside `win_startup.bat`
 2. Run `win_startup.bat`
 3. Run `win_build.bat`
 4. Move the DLL into the appropriate pynowclusters folder based on target machine (x32/x64) and os (win).

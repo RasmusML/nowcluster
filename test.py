@@ -1,10 +1,10 @@
 import pynowcluster.clusters
 import numpy as np
-import matplotlib.pyplot as plt
-import sklearn.cluster
 import time
 
 def kmeans_comparison_test():
+  import sklearn.cluster
+
   np.random.seed(1)
 
   n = 7_000_00
@@ -93,6 +93,9 @@ def fractal_k_means_test():
   print("nowcluster converged:\n", fkm.converged)
 
 
+
+### Fractal K-means tests ###
+
 def fractal_kmeans_pynowcluster(X):
   import pynowcluster.clusters
   import time
@@ -105,48 +108,58 @@ def fractal_kmeans_pynowcluster(X):
 
   return elapsed
 
-def fractal_kmeans_speedtest():
-  kmeans_times_file = "fractal_kmeans_times.txt"
 
-  D = np.array([2, 4, 6, 8, 10, 20, 40])
-  N = np.array([10, 100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
+def fractal_kmeans_pytorch(X):
+  import time
+  import torch_kmeans_main
 
-  iterations = 2
+  start = time.time()
+  torch_kmeans_main.fractal_k_means_pytorch(X)
+  elapsed = time.time() - start
+
+  return elapsed
+
+def fractal_kmeans_speedtest(D, N, f, name="*unknown", iterations=2):
+  from sklearn.datasets import make_blobs
+
+  file = "fractal_kmeans_times_D{}.txt".format(D)
+  
+  # some of the implementation have some startup stuff, so lets not penealize for that
+  # we execute the startup stuff here.
+  f(np.array([[1,2], [2,3], [3,4]], dtype=np.float32))
 
   single_elapses = np.empty(iterations)
-
-  elapses = np.empty((2, D.size, N.size))
+  elapses = np.empty(N.size)
   np.random.seed(0)
 
-  for id, d in enumerate(D):
-    for _in, n in enumerate(N):
+  append_to_file(name + "\n", file)
 
-      X = np.random.normal(0, 100, (n,d))
-      X = X.astype(dtype=np.float32)
+  for _in, n in enumerate(N):
+    #X, _ = make_blobs(n_samples=n, n_features=D, centers=10)
+    X = np.random.normal(0, 100, (n,D))
+    X = X.astype(dtype=np.float32)
 
-      #for i in range(iterations):
-      #  single_elapses[i] = kmeans_pyclustering(X, k)
-      #
-      #avg_elapsed1 = single_elapses.mean()
-      #elapses[0,id,_in] = avg_elapsed1
-      
-      for i in range(iterations):
-        single_elapses[i] = fractal_kmeans_pynowcluster(X)
-      
-      avg_elapsed2 = single_elapses.mean()
-      elapses[1,id,_in] = avg_elapsed2
+    for i in range(iterations):
+      single_elapses[i] = f(X)
+    
+    avg_elapsed = single_elapses.mean()
+    elapses[_in] = avg_elapsed
 
-      summary = "D:{} N:{} {:.2f}s <-> {:.2f}s".format(d, n, avg_elapsed1, avg_elapsed2)
-      append_to_file(summary + "\n", kmeans_times_file)
-      
-      print(summary)
+    print("D:{} N:{} {:.2f}s".format(D, n, avg_elapsed))
 
+    output = "{} {:.2f}\n".format(n, avg_elapsed)
+    append_to_file(output, file)
+    
+  append_to_file("\n", file)
+
+  return elapses
+
+
+### K-means tests ###
 
 def kmeans_pyclustering(X, n_clusters):
-  from pyclustering.cluster.kmeans import kmeans, kmeans_visualizer
+  from pyclustering.cluster.kmeans import kmeans
   from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
-  from pyclustering.samples.definitions import FCPS_SAMPLES
-  from pyclustering.utils import read_sample
   from pyclustering.core.wrapper import ccore_library
   import time
 
@@ -174,74 +187,110 @@ def kmeans_pynowcluster(X, n_clusters):
 
   return elapsed
 
-def k_means_speed_test():
-  kmeans_times_file = "kmeans_times.txt"
+def k_means_speed_test(K, D, N, f, name="*unknown", iterations=2):
+  from sklearn.datasets import make_blobs
 
-  K = np.array([40, 100])
-  D = np.array([8, 10, 20, 40])
-  N = np.array([100, 1_000, 5_000, 10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000])
-
-  iterations = 2
+  file = "kmeans_times_K{}_D{}.txt".format(K, D)
 
   single_elapses = np.empty(iterations)
-
-  elapses = np.empty((2, K.size, D.size, N.size))
+  elapses = np.empty(N.size)
   np.random.seed(0)
 
-  for ik, k in enumerate(K):
-    for id, d in enumerate(D):
-      for _in, n in enumerate(N):
+  append_to_file(name + "\n", file)
 
-        X = np.random.normal(0, 100, (n,d))
-        X = X.astype(dtype=np.float32)
+  for _in, n in enumerate(N):
+    X, _ = make_blobs(n_samples=n, n_features=D, centers=10)
+    #X = np.random.normal(0, 100, (n,D))
+    X = X.astype(dtype=np.float32)
 
-        for i in range(iterations):
-          single_elapses[i] = kmeans_pyclustering(X, k)
-        
-        avg_elapsed1 = single_elapses.mean()
-        elapses[0,ik,id,_in] = avg_elapsed1
-        
-        for i in range(iterations):
-          single_elapses[i] = kmeans_pynowcluster(X, k)
-        
-        avg_elapsed2 = single_elapses.mean()
-        elapses[1,ik,id,_in] = avg_elapsed2
+    for i in range(iterations):
+      single_elapses[i] = f(X, K)
+    
+    avg_elapsed = single_elapses.mean()
+    elapses[_in] = avg_elapsed
+    
+    print("K:{} D:{} N:{} {:.2f}s".format(K, D, n, avg_elapsed))
 
-        summary = "K:{} D:{} N:{} {:.2f}s <-> {:.2f}s".format(k, d, n, avg_elapsed1, avg_elapsed2)
-        append_to_file(summary + "\n", kmeans_times_file)
-        
-        print(summary)
+    output = "{} {:.2f}\n".format(n, avg_elapsed)
+    append_to_file(output, file)
+  
+  append_to_file("\n", file)
+
+  return elapses
 
 def append_to_file(str, filename):
-  with open(filename, "a") as f:
+  with open(filename, "a+") as f:
     f.write(str)
 
-def plot():
+### Plotting ###
+
+def plot_kmeans(K, D, Ns, times1, times2, save=True):
   import matplotlib.pyplot as plt
 
-  times1 = np.arange(1, 100)
-  times2 = np.arange(1, 100) - 10
-
-  print(times1.shape)
-
-  steps = np.arange(1, times1.shape[0] + 1)
-
-  title = "{}-means D={}".format(2, 4)
+  title = "{}-means D={}".format(K, D)
   plt.title(title)
 
   plt.xlabel("N")
   plt.ylabel("execution time (s)")
   
-  plt.plot(steps, times1, 'b', label="PyClustering")
-  plt.scatter(steps, times1)
+  plt.plot(Ns, times1, 'b', label="PyClustering")
+  plt.scatter(Ns, times1)
   
-  plt.plot(steps, times2, 'g', label="NowCluster")
-  plt.scatter(steps, times2)
+  plt.plot(Ns, times2, 'g', label="NowCluster")
+  plt.scatter(Ns, times2)
   
   plt.legend()
+
+  if save:
+    plt.savefig("kmeans.png")
+
   plt.show()
 
-#plot()
-#k_means_speed_test()
+def plot_fractal_kmeans(D, Ns, times1, times2, save=True):
+  import matplotlib.pyplot as plt
 
-fractal_k_means_test()
+  title = "Fractal K-means D={}".format(D)
+  plt.title(title)
+
+  plt.xlabel("N")
+  plt.ylabel("execution time (s)")
+  
+  plt.plot(Ns, times1, 'b', label="PyTorch")
+  plt.scatter(Ns, times1)
+  
+  plt.plot(Ns, times2, 'g', label="NowCluster")
+  plt.scatter(Ns, times2)
+  
+  plt.legend()
+
+  if save:
+    plt.savefig("fractal_kmeans_D{}_N{}.png".format(D, Ns[-1]))
+
+  plt.show()
+
+K = 20
+
+D = 24
+#N = np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000, 5_000_000])
+N = np.array([100, 1_000, 5_000, 10_000])
+
+# K-means
+"""
+elapses1 = k_means_speed_test(K, D, N, kmeans_pyclustering, "pyclustering")
+print("kmeans pyclustering done")
+
+elapses2 = k_means_speed_test(K, D, N, kmeans_pynowcluster, "pynowcluster")
+print("kmeans pynowcluster done")
+
+plot_kmeans(K, D, N, elapses1, elapses2)
+"""
+
+# Fractal K-means
+
+elapses1 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pytorch, "pytorch")
+print("fractal kmeans pytorch done")
+
+elapses2 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pynowcluster, "pynowcluster")
+print("fractal kmeans pynowcluster done")
+
+plot_fractal_kmeans(D, N, elapses1, elapses2)
