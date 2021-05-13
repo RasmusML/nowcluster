@@ -251,26 +251,13 @@ def fractal_k_means_pytorch(X):
     elapsed = time.time() - start
 
     #leaf centroids
-    #leafs=torch.cat(tree.leaf_centroids)  
+    leafs=torch.cat(tree.leaf_centroids)  
     
-    return elapsed
 
     #PLOT DATA and leaf centroids
-    #plt.scatter(Data.cpu().numpy()[:,0],Data.cpu().numpy()[:,1],c=lab,cmap='tab10')
-    #plt.scatter(leafs.cpu().numpy()[:,0],leafs.cpu().numpy()[:,1],c='b')
-    #plt.show()
+    plt.scatter(Data.cpu().numpy()[:,0],Data.cpu().numpy()[:,1],c=lab,cmap='tab10')
+    plt.scatter(leafs.cpu().numpy()[:,0],leafs.cpu().numpy()[:,1],c='b')
+    plt.show()
 
+    return elapsed
 
-
-
-"""
-from sklearn.datasets import make_blobs
-
-import time
-
-X, y = make_blobs(n_samples=np.repeat(100,10), n_features=2)
-
-lab=y
-
-fractal_k_means_pytorch(X)
-"""

@@ -12,10 +12,10 @@
 
 #define MIN_DIMENSION_SIZE_PER_THREAD 1000
 
-#define EPSILON 0.000001
-#define MAX_SAME_CHANGE 10
-
-static int NUM_THREADS;
+// If EPSILON becomes too small, then the centroid will not move, because the initial position of the centroid is on top of an observation. 
+// Thus, this observation will have "too much" weight when updating the centroid position and it will pull the centroid to stay where it is. 
+// So the centroids will just stay at there initial position.
+#define EPSILON 0.001 // this value seems to give enough mobility.
 
 static
 void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {
@@ -59,7 +59,7 @@ float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint
     float distance = distances[s];
     assert(distance != 0);
 
-    lambda_invs[closest_centroid_id] += 1 / distance;
+    lambda_invs[closest_centroid_id] += 1. / distance;
 
     float *sample = dataset + s * n_features;
 
@@ -83,6 +83,10 @@ float update_centroids(float *dataset, uint32 n_samples, uint32 n_features, uint
     
     // calculate distance between new and old centroid
     float distance_metric = squared_euclidian_distance(new_centroid, centroid, n_features);
+
+    for (uint32 f = 0; f < n_features; f++) {
+      centroid[f] = new_centroid[f];
+    }
 
     if (distance_metric > change) {
       change = distance_metric;
@@ -116,9 +120,6 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
                           float tolerance, uint32 max_iterations, float *centroid_init, float *centroids_result, uint32 *groups_result, 
                           uint32 *converged_result, Buffer *buffer) {
 
-
-  NUM_THREADS = omp_get_num_threads();
-
   size_t centroids_size = n_clusters * n_features * sizeof(float);
   size_t cluster_sizes_size = n_clusters * sizeof(uint32);
   size_t clusters_size = n_samples * sizeof(uint32);
@@ -143,9 +144,6 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
 
   uint32 converged = 1;
 
-  float prev_change = -1;
-  uint32 same_change = 0;
-
   uint32 iteration = 1;
   while(1) {
     // reset new centroids + cluster sizes
@@ -156,12 +154,6 @@ void kmeans_wcs_algorithm(float *dataset, uint32 n_samples, uint32 n_features, u
     assign_samples_to_clusters(dataset, n_samples, n_features, n_clusters, centroids, clusters, cluster_sizes, distances);
     
     float change = update_centroids(dataset, n_samples, n_features, n_clusters, clusters, centroids, new_centroids, lambda_invs, distances, cluster_sizes);
-
-    same_change += 1;
-    if (change != prev_change) same_change = 0;
-    prev_change = change;
-
-    if (same_change >= MAX_SAME_CHANGE) break;
 
     if (change < tolerance) break;
     

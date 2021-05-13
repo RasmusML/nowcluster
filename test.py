@@ -7,7 +7,7 @@ def kmeans_comparison_test():
 
   np.random.seed(1)
 
-  n = 7_000_00
+  n = 7_000_0000
   x = np.random.normal(0, 10, n)
   y = np.random.normal(0, 5, n)
 
@@ -29,7 +29,7 @@ def kmeans_comparison_test():
   
   
   start = time.time()
-  nc_result = pynowcluster.clusters.KMeans().process(X, clusters, centroid_init, "wcss")
+  nc_result = pynowcluster.clusters.KMeans().process(X, clusters, centroid_init, "wcss", max_iterations=300)  #sklearn uses max 300 iterations
   end = time.time()
 
   print("nowcluster took:", end - start)
@@ -76,7 +76,7 @@ def fractal_k_means_test2():
 
 def fractal_k_means_test():
   np.random.seed(0)
-  n = 7_000_000
+  n = 10_000_000
   x = np.random.normal(0, 100, n)
   y = np.random.normal(0, 50, n)
   
@@ -84,7 +84,7 @@ def fractal_k_means_test():
   X = X.astype(np.float32)
 
   start = time.time()
-  fkm = pynowcluster.clusters.FractalKMeans().process(X, objective_function="wcs")
+  fkm = pynowcluster.clusters.FractalKMeans().process(X, objective_function="wcs", max_iterations=300) # the pytorch implementation iterates max 300 times, so lets do the same.
   end = time.time()
 
   print("nowcluster took:", end - start)
@@ -119,7 +119,7 @@ def fractal_kmeans_pytorch(X):
 
   return elapsed
 
-def fractal_kmeans_speedtest(D, N, f, name="*unknown", iterations=2):
+def fractal_kmeans_speedtest(D, N, f, name="*unknown", iterations=1):
   from sklearn.datasets import make_blobs
 
   file = "fractal_kmeans_times_D{}.txt".format(D)
@@ -182,7 +182,17 @@ def kmeans_pynowcluster(X, n_clusters):
   import time
 
   start = time.time()
-  nc_result = pynowcluster.clusters.KMeans().process(X, n_clusters, centroid_init="kmeans++")
+  nc_result = pynowcluster.clusters.KMeans().process(X, n_clusters, centroid_init="kmeans++", max_iterations=100)
+  elapsed = time.time() - start
+
+  return elapsed
+
+def kmeans_sklearn(X, n_clusters):
+  import sklearn.cluster
+  import time
+
+  start = time.time()
+  sk_result = sklearn.cluster.KMeans(n_clusters=n_clusters, init="k-means++", max_iter=100, n_init=1, algorithm="full").fit(X)
   elapsed = time.time() - start
 
   return elapsed
@@ -224,21 +234,62 @@ def append_to_file(str, filename):
 
 ### Plotting ###
 
-def plot_kmeans(K, D, Ns, times1, times2, save=True):
+def load_test_runs(file):
+  import os
+  import re
+
+  f = open(file, "r")
+  content = f.read()
+
+  content = content.rstrip().split(os.linesep)
+
+  files = []
+
+  name = "*unknown"
+  Ns = []
+  times = []
+
+  name_next = True
+
+  for line in content:
+    if line == "":
+      files.append((name, Ns, times))
+
+      Ns = []
+      times = []
+      name = "*unknown"
+      name_next = True
+
+    elif name_next:
+      name_next = False
+      name = line
+
+    else:
+      split = line.split(" ")
+      N = int(split[0])
+      time = float(split[1])
+
+      Ns.append(N)
+      times.append(time)
+
+  files.append((name, Ns, times))
+
+  return files
+
+def plot_kmeans(K, D, tests, save=True):
   import matplotlib.pyplot as plt
 
   title = "{}-means D={}".format(K, D)
   plt.title(title)
+  plt.grid()
 
   plt.xlabel("N")
   plt.ylabel("execution time (s)")
   
-  plt.plot(Ns, times1, 'b', label="PyClustering")
-  plt.scatter(Ns, times1)
-  
-  plt.plot(Ns, times2, 'g', label="NowCluster")
-  plt.scatter(Ns, times2)
-  
+  for (name, Ns, times) in tests:
+    plt.plot(Ns, times, label=name)
+    plt.scatter(Ns, times)
+    
   plt.legend()
 
   if save:
@@ -268,29 +319,69 @@ def plot_fractal_kmeans(D, Ns, times1, times2, save=True):
 
   plt.show()
 
-K = 20
 
-D = 24
-#N = np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000, 5_000_000])
-N = np.array([100, 1_000, 5_000, 10_000])
+#kmeans_comparison_test()
 
 # K-means
+K = 20
+D = 20
 """
-elapses1 = k_means_speed_test(K, D, N, kmeans_pyclustering, "pyclustering")
+N = np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000])
+elapses_pyclustering = k_means_speed_test(K, D, N, kmeans_pyclustering, "pyclustering")
 print("kmeans pyclustering done")
 
-elapses2 = k_means_speed_test(K, D, N, kmeans_pynowcluster, "pynowcluster")
+N = np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000])
+elapses_sklearn = k_means_speed_test(K, D, N, kmeans_sklearn, "sklearn")
+print("kmeans sklearn done")
+
+N = np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000])
+elapses_nowcluster = k_means_speed_test(K, D, N, kmeans_pynowcluster, "pynowcluster")
 print("kmeans pynowcluster done")
-
-plot_kmeans(K, D, N, elapses1, elapses2)
 """
+#tests = load_test_runs("kmeans_times_K20_D20.txt")
 
+#plot_kmeans(K=K, D=D, tests=tests)
+
+"""
 # Fractal K-means
+inputs = [(2,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_500_000, 5_000_000])),
+          (4,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000])),
+          (8,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000])),
+          (16,  np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000])),
+          (32,  np.array([100, 1_000, 5_000, 10_000, 50_000, 100_000])),
+          (64,  np.array([100, 1_000, 5_000, 10_000, 50_000])),
+          (128, np.array([100, 1_000, 5_000, 10_000]))
+        ]
+
+tests_count = len(inputs)
+
+for i, (D, N) in enumerate(inputs):
+  fractal_kmeans_speedtest(D, N, fractal_kmeans_pynowcluster, "nowcluster")
+  print("D={} N={} done, {:.2f}%".format(D, N[-1], (i+1.0) / tests_count * 100.))
+
+for i, (D, N) in enumerate(inputs):
+  fractal_kmeans_speedtest(D, N, fractal_kmeans_pytorch, "pytorch")
+  print("D={} N={} done, {:.2f}%".format(D, N[-1], (i+1.0) / tests_count * 100.))
+
 
 elapses1 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pytorch, "pytorch")
 print("fractal kmeans pytorch done")
 
 elapses2 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pynowcluster, "pynowcluster")
 print("fractal kmeans pynowcluster done")
+"""
 
-plot_fractal_kmeans(D, N, elapses1, elapses2)
+
+#plot_fractal_kmeans(D, N, elapses1, elapses2)
+
+np.random.seed(0)
+n = 700
+x = np.random.normal(0, 10, n)
+y = np.random.normal(0, 5, n)
+  
+X = np.stack((x,y), axis=1)
+X = X.astype(np.float32)
+
+fractalKMeans = pynowcluster.clusters.FractalKMeans().process(X, num_child_clusters=3, min_cluster_size=10, objective_function="wcs")
+
+layers = fractalKMeans.get_num_layers()

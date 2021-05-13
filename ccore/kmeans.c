@@ -14,8 +14,6 @@
 
 #define MIN_DIMENSION_SIZE_PER_THREAD 1000
 
-static int NUM_THREADS;
-
 static
 void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes) {
   int dimension = (n_samples * n_features * n_clusters) / MIN_DIMENSION_SIZE_PER_THREAD;
@@ -110,9 +108,6 @@ Buffer kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint32 n_clus
 void kmeans_algorithm(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, 
                       float tolerance, uint32 max_iterations, float *centroid_init, float *centroids_result, 
                       uint32 *groups_result, uint32 *converged_result, Buffer *buffer) {
-
-
-  NUM_THREADS = omp_get_num_threads();
 
   size_t centroids_size = n_clusters * n_features * sizeof(float);
   size_t cluster_sizes_size = n_clusters * sizeof(uint32);
