@@ -302,6 +302,7 @@ def plot_fractal_kmeans(D, ns1, ns2, ns3, times1, times2, times3, save=True):
 
   title = "Fractal K-means D={}".format(D)
   plt.title(title)
+  plt.grid()
 
   plt.xlabel("N")
   plt.ylabel("execution time (s)")
