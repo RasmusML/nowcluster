@@ -310,7 +310,7 @@ def plot_fractal_kmeans(D, ns1, ns2, ns3, times1, times2, times3, save=True):
   plt.plot(ns1, times1, 'b', label="NowCluster")
   plt.scatter(ns1, times1, color='b')
   
-  plt.plot(ns2, times2, 'g', label="PyTorch (1060)")
+  plt.plot(ns2, times2, 'g', label="PyTorch (GTX 1060)")
   plt.scatter(ns2, times2, color='g')
   
   plt.plot(ns3, times3, 'r', label="PyTorch (GTX 2080)")
