@@ -15,7 +15,7 @@
 // If EPSILON becomes too small, then the centroid will not move, because the initial position of the centroid is on top of an observation. 
 // Thus, this observation will have "too much" weight when updating the centroid position and it will pull the centroid to stay where it is. 
 // So the centroids will just stay at there initial position.
-#define EPSILON 0.001 // this value seems to give enough mobility.
+#define EPSILON 0.01 // this value seems to give enough mobility.
 
 static
 void assign_samples_to_clusters(float *dataset, uint32 n_samples, uint32 n_features, uint32 n_clusters, float *centroids, uint32 *clusters, uint32 *cluster_sizes, float *distances) {

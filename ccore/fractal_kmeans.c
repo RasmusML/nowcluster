@@ -71,7 +71,7 @@ Buffer fractal_kmeans_allocate_buffer(uint32 n_samples, uint32 n_features, uint3
 }
 
 Fractal_Kmeans_Result fractal_kmeans(float *dataset, uint32 n_samples, uint32 n_features, uint32 min_cluster_size, 
-                                    float tolerance, uint32 max_iterations, uint32 init_method, uint32 split_size, uint8 use_wcss) {  
+                                     float tolerance, uint32 max_iterations, uint32 init_method, uint32 split_size, uint8 use_wcss) {  
   
   const uint32 max_centroids = split_size;
 
