@@ -313,7 +313,7 @@ def plot_fractal_kmeans(D, ns1, ns2, ns3, times1, times2, times3, save=True):
   plt.plot(ns2, times2, 'g', label="PyTorch (GTX 1060)")
   plt.scatter(ns2, times2, color='g')
   
-  plt.plot(ns3, times3, 'r', label="PyTorch (GTX 2080)")
+  plt.plot(ns3, times3, 'r', label="PyTorch (GTX 2070 super)")
   plt.scatter(ns3, times3, color='r')
 
   plt.legend()
