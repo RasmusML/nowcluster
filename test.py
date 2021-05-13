@@ -297,7 +297,7 @@ def plot_kmeans(K, D, tests, save=True):
 
   plt.show()
 
-def plot_fractal_kmeans(D, Ns, times1, times2, save=True):
+def plot_fractal_kmeans(D, ns1, ns2, ns3, times1, times2, times3, save=True):
   import matplotlib.pyplot as plt
 
   title = "Fractal K-means D={}".format(D)
@@ -306,16 +306,19 @@ def plot_fractal_kmeans(D, Ns, times1, times2, save=True):
   plt.xlabel("N")
   plt.ylabel("execution time (s)")
   
-  plt.plot(Ns, times1, 'b', label="PyTorch")
-  plt.scatter(Ns, times1)
+  plt.plot(ns1, times1, 'b', label="NowCluster")
+  plt.scatter(ns1, times1, color='b')
   
-  plt.plot(Ns, times2, 'g', label="NowCluster")
-  plt.scatter(Ns, times2)
+  plt.plot(ns2, times2, 'g', label="PyTorch (1060)")
+  plt.scatter(ns2, times2, color='g')
   
+  plt.plot(ns3, times3, 'r', label="PyTorch (GTX 2080)")
+  plt.scatter(ns3, times3, color='r')
+
   plt.legend()
 
   if save:
-    plt.savefig("fractal_kmeans_D{}_N{}.png".format(D, Ns[-1]))
+    plt.savefig("fractal_kmeans_D{}.png".format(D))
 
   plt.show()
 
@@ -341,19 +344,19 @@ N = np.array([1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000, 5_
 elapses_nowcluster = k_means_speed_test(K, D, N, kmeans_pynowcluster, "nowcluster")
 print("kmeans pynowcluster done")
 
-"""
 tests = load_test_runs("kmeans_times_K{}_D{}.txt".format(K, D))
 
 plot_kmeans(K=K, D=D, tests=tests)
-
-
 """
+
+
 # Fractal K-means
-inputs = [(2,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_500_000, 5_000_000])),
-          (4,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000])),
-          (8,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000])),
-          (16,  np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000])),
-          (32,  np.array([100, 1_000, 5_000, 10_000, 50_000, 100_000])),
+"""
+inputs = [#(2,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_500_000, 5_000_000])),
+          #(4,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000, 3_000_000])),
+          #(8,   np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000, 2_000_000])),
+          #(16,  np.array([100, 1_000, 5_000, 10_000, 100_000, 1_000_000])),
+          #(32,  np.array([100, 1_000, 5_000, 10_000, 50_000, 100_000])),
           (64,  np.array([100, 1_000, 5_000, 10_000, 50_000])),
           (128, np.array([100, 1_000, 5_000, 10_000]))
         ]
@@ -368,14 +371,10 @@ for i, (D, N) in enumerate(inputs):
   fractal_kmeans_speedtest(D, N, fractal_kmeans_pytorch, "pytorch")
   print("D={} N={} done, {:.2f}%".format(D, N[-1], (i+1.0) / tests_count * 100.))
 
-
-elapses1 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pytorch, "pytorch")
-print("fractal kmeans pytorch done")
-
-elapses2 = fractal_kmeans_speedtest(D, N, fractal_kmeans_pynowcluster, "pynowcluster")
-print("fractal kmeans pynowcluster done")
 """
-#(_, ns1, times1), (_, ns2, times2) = load_test_runs("fractal_kmeans_times_D{}.txt".format(D))
+D = 16
+
+(_, ns1, times1), (_, ns2, times2), (_, ns3, times3) = load_test_runs("fractal_kmeans_times_D{}.txt".format(D))
 
 
-#plot_fractal_kmeans(D, ns1, times1, times2)
+plot_fractal_kmeans(D, ns1, ns2, ns3, times1, times2, times3)

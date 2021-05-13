@@ -255,9 +255,9 @@ def fractal_k_means_pytorch(X):
     
 
     #PLOT DATA and leaf centroids
-    plt.scatter(Data.cpu().numpy()[:,0],Data.cpu().numpy()[:,1],c=lab,cmap='tab10')
-    plt.scatter(leafs.cpu().numpy()[:,0],leafs.cpu().numpy()[:,1],c='b')
-    plt.show()
+    #plt.scatter(Data.cpu().numpy()[:,0],Data.cpu().numpy()[:,1],c=lab,cmap='tab10')
+    #plt.scatter(leafs.cpu().numpy()[:,0],leafs.cpu().numpy()[:,1],c='b')
+    #plt.show()
 
     return elapsed
 
